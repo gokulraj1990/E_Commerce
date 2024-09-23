@@ -15,7 +15,6 @@ class Product(models.Model):
     stock = models.IntegerField()
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
     imageUrl = models.URLField(max_length=200, blank=True)  # URL to the product image
-    rating = models.FloatField(default=0.0)  # Average rating
 
     def save(self, *args, **kwargs):
         if not self.productID:  # Generate ID only if it doesn't exist

@@ -1,0 +1,7 @@
+product list,,,,,
+name,description,price,stock,category,img url
+LAPTOP,LENOVO,60000,120,ELEC,https://productsimgbucketecom.s3.ap-southeast-2.amazonaws.com/lenovo_laptop.jpg
+MOBILE,SAMSUNG,60000,120,ELEC,https://productsimgbucketecom.s3.ap-southeast-2.amazonaws.com/samsung_mobile.jpg
+MOBILE,APPLE,100000,100,ELEC,https://productsimgbucketecom.s3.ap-southeast-2.amazonaws.com/iphone.jpg
+CAP,NIKE,300,60,FASH,https://productsimgbucketecom.s3.ap-southeast-2.amazonaws.com/cap.jpg
+TOYS,TOY,500,40,TOYS,https://productsimgbucketecom.s3.ap-southeast-2.amazonaws.com/Toy.jpg
