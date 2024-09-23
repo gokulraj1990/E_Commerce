@@ -1,7 +1,8 @@
 from django.urls import path
-from . import views
+from .views import user_detail,customer_detail,user_list
 
 urlpatterns = [
-    path('user/<int:user_id>/', views.user_details, name='user_details'),
-    path('customer/<int:user_id>/', views.customer_profile, name='customer_profile'),
+    path('users/', user_list, name='user-list'), # List all users or add a new user (POST)
+    path('users/<int:pk>/', user_detail, name='user-detail'),# Get, update, or delete a specific user
+    path('customers/<int:pk>/', customer_detail, name='customer-detail'),# Get or update customer details
 ]
