@@ -44,24 +44,55 @@ def deleteProduct(request, product_id):
     except Exception as e:
         return Response({"Success": False, "Message": "Not deleted", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['DELETE'])
+def deleteMultipleProducts(request):
+    product_ids = request.data.get('product_ids', [])
+    if not product_ids:
+        return Response({"Success": False, "Message": "No product IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        products = Product.objects.filter(productID__in=product_ids)
+        deleted_count, _ = products.delete()
+        return Response({"Success": True, "Message": f"{deleted_count} products deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+    except Exception as e:
+        return Response({"Success": False, "Message": "Not deleted", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 def getProducts(request):
     try:
-        query = request.data.get('name', '').strip()  # Get the search term from JSON
-        if query:
-            products = Product.objects.filter(
-                Q(name__icontains=query) |
-                Q(description__icontains=query) |
-                Q(category__icontains=query)
-            )
-        else:
-            products = Product.objects.all()  # Return all products if no query
+        query = request.data.get('name', '').strip()
+        category = request.data.get('category', '').strip()
+        price_min = request.data.get('price_min', None)
+        price_max = request.data.get('price_max', None)
 
+        filters = Q()
+        if query:
+            filters &= (Q(name__icontains=query) |
+                        Q(description__icontains=query) |
+                        Q(category__icontains=query))
+        if category:
+            filters &= Q(category__icontains=category)
+        if price_min is not None:
+            filters &= Q(price__gte=price_min)
+        if price_max is not None:
+            filters &= Q(price__lte=price_max)
+
+        products = Product.objects.filter(filters) if filters else Product.objects.all()
         serializer = ProductSerializer(products, many=True)
         return Response({"Success": True, "Products": serializer.data}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"Success": False, "Message": "Could not retrieve products", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def getProductsByCategory(request, category):
+    try:
+        products = Product.objects.filter(category__icontains=category)
+        serializer = ProductSerializer(products, many=True)
+        return Response({"Success": True, "Products": serializer.data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"Success": False, "Message": "Could not retrieve products", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 def importProducts(request):
