@@ -29,7 +29,6 @@ def protected_view(request):
     except User_Reg.DoesNotExist:
         return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-
 @api_view(['POST'])
 def token_refresh(request):
     # Get the refresh token from the request's cookies
@@ -61,8 +60,7 @@ def token_refresh(request):
     
     except TokenError:
         return Response({'detail': 'Invalid refresh token'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    
+        
 @api_view(['POST'])
 def login_view(request):
     try:
@@ -113,3 +111,4 @@ def create_user(request):
             return Response({"Success": True, "Message": "User created successfully"}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"Success": False, "Message": "Not created", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
