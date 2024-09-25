@@ -1,11 +1,55 @@
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view,authentication_classes, permission_classes
 from rest_framework.response import Response
 from .models import User, Customer
 from .serializers import UserSerializer,CustomerSerializer
 
+
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import AuthenticationFailed
+from django.contrib.auth.hashers import check_password
+from rest_framework.decorators import api_view
+from django.contrib.auth.models import AnonymousUser
+from rest_framework_simplejwt.exceptions import TokenError
+
+@api_view(['POST'])
+def login_view(request):
+    try:
+        email = request.data.get('email')
+        password = request.data.get('password')
+        
+        # Retrieve user by email_id
+        user = User.objects.filter(email=email).first()
+        
+        if user is None:
+            raise AuthenticationFailed("User Not Found")
+        # Check password
+        if not check_password(password,user.password):
+            raise AuthenticationFailed("Incorrect Password")
+        
+        # Create JWT token
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token=str(refresh)
+
+        # Create response with token and set cookie
+        response = Response()
+        response.set_cookie(key='jwt_access', value=access_token, httponly=True)
+        response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True)
+        response.data={"Message":"Successfully Logged in"}
+        return response
+    
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['GET', 'POST'])
 def user_list(request):
+    # Only authenticated users can access this view
     if request.method == 'GET':
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
@@ -17,7 +61,7 @@ def user_list(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    
 @api_view(['GET', 'PUT', 'DELETE'])
 def user_detail(request, pk):
     try:
