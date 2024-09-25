@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'user_mgmt',
     'product_mgmt',
     'admin_console',
+    'corsheaders',
 ]
 
 
@@ -53,6 +54,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'admin_console.middleware.JWTAuthenticationMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
