@@ -1,0 +1,12 @@
+version: '3.8'  # Updated to a newer, stable version
+
+services:
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: "1"  # Using key-value pair format for clarity
