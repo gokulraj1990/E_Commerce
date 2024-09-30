@@ -1,20 +1,14 @@
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import status
-from rest_framework.decorators import api_view,authentication_classes, permission_classes
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import User, Customer
+from .models import CustomerProfile
+from admin_console.models import User
 from .serializers import UserSerializer,CustomerSerializer
-
-
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth.hashers import check_password
-from rest_framework.decorators import api_view
-from django.contrib.auth.models import AnonymousUser
-from rest_framework_simplejwt.exceptions import TokenError
 
 @api_view(['POST'])
 def login_view(request):
@@ -96,7 +90,7 @@ def customer_detail(request, pk):
     # POST request: Create a new Customer
     if request.method == 'POST':
         # Ensure the user doesn't already have a Customer record
-        if Customer.objects.filter(user=user).exists():
+        if CustomerProfile.objects.filter(user=user).exists():
             return Response({"error": "Customer already exists for this user"}, status=status.HTTP_400_BAD_REQUEST)
         
         # Deserialize the request data for creating a new Customer
@@ -109,8 +103,8 @@ def customer_detail(request, pk):
 
     # GET request: Fetch customer details
     try:
-        customer = Customer.objects.get(user=user)
-    except Customer.DoesNotExist:
+        customer = CustomerProfile.objects.get(user=user)
+    except CustomerProfile.DoesNotExist:
         return Response({"error": "Customer not found"}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':

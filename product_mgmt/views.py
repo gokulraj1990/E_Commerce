@@ -93,6 +93,16 @@ def getProductsByCategory(request, category):
     except Exception as e:
         return Response({"Success": False, "Message": "Could not retrieve products", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET'])
+def get_all_products(request):
+    try:
+        products = Product.objects.all()
+        serializer = ProductSerializer(products, many=True)
+        return Response({'Success': True, 'Products': serializer.data})
+    except Exception as e:
+        print(f"Error: {e}")
+        return Response({'Success': False, 'Message': str(e)}, status=500)
+
 
 @api_view(['POST'])
 def importProducts(request):

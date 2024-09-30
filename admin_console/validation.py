@@ -7,21 +7,10 @@ import re
 class cust_validation():
 
     def __init__(self,data):
-         self.mobile=data["mobile_number"]
-         self.first_name=data["first_name"]
-         self.last_name=data["last_name"]
-         self.password=data["password"]
-                
-         self.validate_mobile(self.mobile)
-         self.validate_name(self.first_name)
-         self.validate_name(self.last_name)
+         self.firstname=data["firstname"]
+         self.password=data["password"]       
+         self.validate_name(self.firstname)
          self.validate_password(self.password)
-
-    def validate_mobile(self,value):
-        pattern = re.compile(r"\d{10}$")
-        if not pattern.match(value):
-            raise CustomValidationError('Invalid Mobile Number, must be 10 digits.')
-        return value
 
     def validate_name(self,value):
         pattern = re.compile(r'^[A-Za-z\s]+$')
@@ -43,5 +32,4 @@ class CustomValidationError(Exception):
         return self.value
         # return Response({"Success": False, "Message":self.value}, status=status.HTTP_400_BAD_REQUEST)
 
-                         
-                         
+                    
