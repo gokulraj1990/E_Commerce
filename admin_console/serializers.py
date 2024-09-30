@@ -1,10 +1,10 @@
 #serializers.py
 
 from rest_framework import serializers
-from .models import User_Reg
+from .models import User
 
 class UserRegSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User_Reg
+        model = User
         fields = '__all__'
 

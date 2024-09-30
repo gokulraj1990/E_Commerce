@@ -52,7 +52,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'user_mgmt.middleware.JWTAuthenticationMiddleware',
+    # 'user_mgmt.middleware.JWTAuthenticationMiddleware',
     'django.middleware.common.CommonMiddleware',
     'admin_console.middleware.JWTAuthenticationMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -156,3 +156,10 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+#    "http://192.168.29.98:3000",  # React app IP
+]
+
+CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (not recommended for production)
