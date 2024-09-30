@@ -22,7 +22,7 @@ class User(models.Model):
 
     # Unique identifier for the user
     id = models.CharField(max_length=12, primary_key=True, editable=False)
-    firstname = models.CharField(max_length=50, unique=True)
+    firstname = models.CharField(max_length=50)
     email = models.EmailField(max_length=50, unique=True)
     password = models.CharField(max_length=255)  # Store hashed passwords
     role = models.CharField(max_length=20,choices=ROLE_CHOICES, default=CUSTOMER)
