@@ -6,7 +6,6 @@ from rest_framework.exceptions import AuthenticationFailed
 from .models import User
 from .serializers import UserRegSerializer
 from .validation import cust_validation
-from django.contrib.auth.hashers import check_password
 from rest_framework.decorators import api_view
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.exceptions import TokenError
@@ -14,8 +13,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.decorators import api_view, permission_classes
 from .permissions import IsAdmin, IsCustomer
-
-
+from django.contrib.auth.hashers import check_password, make_password
+import random
+import string
+from .utils import send_custom_email
+from django.conf import settings
+from .validation import validate_password  # Import the validation function
 
 
 @api_view(['GET'])
@@ -102,7 +105,7 @@ def login_view(request):
         
         if user is None:
             raise AuthenticationFailed("User Not Found")
-        
+
         # Check password
         if not check_password(password, user.password):
             raise AuthenticationFailed("Incorrect Password")
@@ -153,4 +156,66 @@ def create_user(request):
             return Response({"Success": True, "Message": "User created successfully"}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"Success": False, "Message": "Not created", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
+@api_view(['POST'])
+def forgot_password(request):
+    try:
+        email = request.data.get('email')
+        user = User.objects.filter(email=email).first()
+
+        if not user:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Generate a temporary password
+        while True:
+            temp_password = ''.join(random.choices(string.ascii_letters + string.digits + "!@#$%^&*()", k=8))
+            if validate_password(temp_password):
+                break
+
+        # Hash the temporary password
+        hashed_temp_password = make_password(temp_password)
+        user.password = hashed_temp_password  # Set the hashed temporary password
+        user.save()
+        print(temp_password)
+        # Send the temporary password via email
+        send_custom_email(
+            'Password Reset',
+            f'Your temporary password is: {temp_password}. Please change it after logging in.',
+            settings.EMAIL_HOST_USER,
+            [email],
+            fail_silently=False,
+        )
+
+        return Response({'detail': 'Temporary password sent to your email'}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['POST'])
+@permission_classes([IsCustomer])
+def change_password(request):
+    try:
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        user = request.jwt_user  # Assuming `jwt_user` is set correctly
+
+        # Check current password
+        if not check_password(current_password, user.password):
+            return Response({'detail': 'Incorrect current password'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update with new password
+        user.password = make_password(new_password)
+        user.save()
+
+        return Response({'detail': 'Password changed successfully'}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+

@@ -23,6 +23,7 @@ class User(models.Model):
     # Unique identifier for the user
     id = models.CharField(max_length=12, primary_key=True, editable=False)
     firstname = models.CharField(max_length=50)
+    lastname = models.CharField(max_length=50, blank=True, null=True)
     email = models.EmailField(max_length=50, unique=True)
     password = models.CharField(max_length=255)  # Store hashed passwords
     role = models.CharField(max_length=20,choices=ROLE_CHOICES, default=CUSTOMER)
@@ -45,11 +46,12 @@ class User(models.Model):
 
     def view_user_details(self):
         return {
-            'username': self.username,
+            'firstname': self.firstname,
+            'lastname': self.lastname, 
             'email': self.email,
             'role': self.role,
             'status': self.status,
         }
 
     def __str__(self):
-        return self.username
+        return f"{self.firstname} {self.lastname or ''}".strip() 
