@@ -32,4 +32,18 @@ class CustomValidationError(Exception):
         return self.value
         # return Response({"Success": False, "Message":self.value}, status=status.HTTP_400_BAD_REQUEST)
 
+
+def validate_password(password):
+    # Define the password criteria
+    if len(password) < 8:
+        return False
+    if not re.search(r"[A-Z]", password):  # Check for at least one uppercase letter
+        return False
+    if not re.search(r"[a-z]", password):  # Check for at least one lowercase letter
+        return False
+    if not re.search(r"[0-9]", password):  # Check for at least one digit
+        return False
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):  # Check for special characters
+        return False
+    return True
                     

@@ -159,7 +159,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-#    "http://192.168.29.98:3000",  # React app IP
+   "http://192.168.29.98:3000",  # React app IP
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (not recommended for production)
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # Use your email provider's SMTP server
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True  # Use TLS
+EMAIL_HOST_USER = 'awsclassjun2024@gmail.com'  # Your email address
+EMAIL_HOST_PASSWORD = 'aikntorrawxedlxy'  # Your email password or app password
+
