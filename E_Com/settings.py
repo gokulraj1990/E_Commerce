@@ -169,5 +169,5 @@ EMAIL_HOST = 'smtp.gmail.com'  # Use your email provider's SMTP server
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True  # Use TLS
 EMAIL_HOST_USER = 'awsclassjun2024@gmail.com'  # Your email address
-EMAIL_HOST_PASSWORD = 'aikntorrawxedlxy'  # Your email password or app password
+
 
