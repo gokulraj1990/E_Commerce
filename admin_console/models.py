@@ -2,6 +2,7 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password
 import random
+import uuid
 
 class User(models.Model):
     ADMIN = 'Admin'

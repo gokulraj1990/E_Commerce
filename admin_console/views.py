@@ -175,7 +175,7 @@ def forgot_password(request):
 
         # Hash the temporary password
         hashed_temp_password = make_password(temp_password)
-        user.password = hashed_temp_password  # Set the hashed temporary password
+        user.password = temp_password  # Set the hashed temporary password
         user.save()
         print(temp_password)
         # Send the temporary password via email
@@ -203,19 +203,15 @@ def change_password(request):
 
         user = request.jwt_user  # Assuming `jwt_user` is set correctly
 
-        # Check current password
+        # Check current passwor
         if not check_password(current_password, user.password):
             return Response({'detail': 'Incorrect current password'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Update with new password
-        user.password = make_password(new_password)
+        user.password = new_password
         user.save()
 
         return Response({'detail': 'Password changed successfully'}, status=status.HTTP_200_OK)
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-

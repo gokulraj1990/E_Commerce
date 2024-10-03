@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 from datetime import timedelta
+# from decouple import Config,RepositoryEnv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,7 +28,7 @@ SECRET_KEY = 'django-insecure-fr^1a-1&q1&o+a#v7=!5x2skpa!0*ud9p$ym2%s*ugqv*fkw!n
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -52,7 +53,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    # 'user_mgmt.middleware.JWTAuthenticationMiddleware',
     'django.middleware.common.CommonMiddleware',
     'admin_console.middleware.JWTAuthenticationMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -160,6 +160,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
    "http://192.168.29.98:3000",  # React app IP
+   
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (not recommended for production)
@@ -169,5 +170,6 @@ EMAIL_HOST = 'smtp.gmail.com'  # Use your email provider's SMTP server
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True  # Use TLS
 EMAIL_HOST_USER = 'awsclassjun2024@gmail.com'  # Your email address
-EMAIL_HOST_PASSWORD = 'aikntorrawxedlxy'  # Your email password or app password
 
+# env_config = Config(RepositoryEnv('.env'))  # Adjust the path if needed
+# EMAIL_HOST_PASSWORD = env_config('EMAIL_HOST_PASSWORD')
