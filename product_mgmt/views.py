@@ -57,31 +57,139 @@ def deleteMultipleProducts(request):
     except Exception as e:
         return Response({"Success": False, "Message": "Not deleted", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['POST'])
+
+
+@api_view(['GET'])
 def getProducts(request):
     try:
-        query = request.data.get('name', '').strip()
-        category = request.data.get('category', '').strip()
-        price_min = request.data.get('price_min', None)
-        price_max = request.data.get('price_max', None)
+        query = request.query_params.get('q', '').strip()
+        category = request.query_params.get('category', '').strip()
+        price_min = request.query_params.get('price_min', None)
+        price_max = request.query_params.get('price_max', None)
+        stock_min = request.query_params.get('stock_min', None)
+        stock_max = request.query_params.get('stock_max', None)
 
         filters = Q()
-        if query:
-            filters &= (Q(name__icontains=query) |
-                        Q(description__icontains=query) |
-                        Q(category__icontains=query))
-        if category:
-            filters &= Q(category__icontains=category)
-        if price_min is not None:
-            filters &= Q(price__gte=price_min)
-        if price_max is not None:
-            filters &= Q(price__lte=price_max)
 
+        if query:
+            filters &= (Q(product__icontains=query) |
+                        Q(model__icontains=query) |
+                        Q(description__icontains=query))
+
+        if category:
+            filters &= Q(category=category)
+
+        # Handle price filtering
+        if price_min is not None:
+            price_min = float(price_min)  # Convert to float
+            filters &= Q(price__gte=price_min)  # Ensure products have price >= price_min
+            
+        if price_max is not None:
+            price_max = float(price_max)  # Convert to float
+            filters &= Q(price__lte=price_max)  # Ensure products have price <= price_max
+
+        # Handle stock filtering
+        if stock_min is not None:
+            stock_min = int(stock_min)  # Convert to int
+            filters &= Q(stock__gte=stock_min)  # Ensure stock >= stock_min
+            
+        if stock_max is not None:
+            stock_max = int(stock_max)  # Convert to int
+            filters &= Q(stock__lte=stock_max)  # Ensure stock <= stock_max
+
+
+
+        # Query the database based on the filters
         products = Product.objects.filter(filters) if filters else Product.objects.all()
+
+
+
         serializer = ProductSerializer(products, many=True)
         return Response({"Success": True, "Products": serializer.data}, status=status.HTTP_200_OK)
+
+    except ValueError as e:
+        return Response({"Success": False, "Message": "Invalid input", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"Success": False, "Message": "Could not retrieve products", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# @api_view(['GET'])
+# def getProducts(request):
+#     try:
+#         query = request.query_params.get('name', '').strip()
+#         category = request.query_params.get('category', '').strip()
+#         price_min = request.query_params.get('price_min', None)
+#         price_max = request.query_params.get('price_max', None)
+#         stock_min = request.query_params.get('stock_min', None)
+#         stock_max = request.query_params.get('stock_max', None)
+
+#         filters = Q()
+
+#         # Construct filters based on the provided parameters
+#         if query:
+#             filters &= (Q(product__icontains=query) |
+#                         Q(model__icontains=query) |
+#                         Q(description__icontains=query))
+        
+#         if category:
+#             filters &= Q(category=category)  # Exact match for category
+
+#         if price_min is not None:
+#             filters &= Q(price__gte=float(price_min))
+#         if price_max is not None:
+#             filters &= Q(price__lte=float(price_max))
+
+#         if stock_min is not None:
+#             filters &= Q(stock__gte=int(stock_min))
+#         if stock_max is not None:
+#             filters &= Q(stock__lte=int(stock_max))
+
+#         # Query the database based on the filters
+#         products = Product.objects.filter(filters) if filters else Product.objects.all()
+
+#         # Serialize the results
+#         serializer = ProductSerializer(products, many=True)
+#         return Response({"Success": True, "Products": serializer.data}, status=status.HTTP_200_OK)
+
+#     except ValidationError as e:
+#         return Response({"Success": False, "Message": "Invalid input", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+#     except Exception as e:
+#         return Response({"Success": False, "Message": "Could not retrieve products", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @api_view(['GET'])
@@ -120,12 +228,13 @@ def importProducts(request):
 
     for row in csv.reader(io_string, delimiter=','):
         product_data = {
-            'name': row[0],
-            'description': row[1],
-            'price': row[2],
-            'stock': row[3],
-            'category': row[4],
-            'imageUrl': row[5],
+            'category': row[0],
+            'product': row[1],
+            'model': row[2],
+            'price': row[3],
+            'description': row[4],
+            'stock': row[5],
+            'imageUrl': row[6]
         }
         serializer = ProductSerializer(data=product_data)
         if serializer.is_valid(raise_exception=False):
