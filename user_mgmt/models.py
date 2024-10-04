@@ -15,7 +15,6 @@ class CustomerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)  # Use primary key from User
     mobile_number = models.CharField(max_length=10, unique=True, default=None)
     address = models.CharField(max_length=255, default=None)
-
     city = models.CharField(choices=get_city_state_choices(), max_length=100, default=None)
     state = models.CharField(max_length=100, blank=True)  # State field can be blank initially
     country = models.CharField(max_length=50, default='India')  # Default to India

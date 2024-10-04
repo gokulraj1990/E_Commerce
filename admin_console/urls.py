@@ -1,7 +1,7 @@
 #urls.py
 
 from django.urls import path
-from .views import create_user,login_view,protected_view_admin,protected_view_customer ,logout_view,token_refresh,forgot_password,change_password
+from .views import create_user,login_view,protected_view_admin,protected_view_customer ,logout_view,token_refresh,forgot_password,change_password,reset_password
 
 
 urlpatterns = [
@@ -13,7 +13,7 @@ path('logout/', logout_view, name='logout_view'),
 path('token/refresh/', token_refresh, name='token_refresh'),
 path('forgotpassword/', forgot_password, name='forgot_password'),
 path('changepassword/', change_password, name='change_password'),
-
+path('reset-password/', reset_password, name='reset_password'),
 ]
 
 

@@ -59,14 +59,10 @@ def deleteMultipleProducts(request):
 
 
 
-
-
-
-
 @api_view(['GET'])
 def getProducts(request):
     try:
-        query = request.query_params.get('name', '').strip()
+        query = request.query_params.get('q', '').strip()
         category = request.query_params.get('category', '').strip()
         price_min = request.query_params.get('price_min', None)
         price_max = request.query_params.get('price_max', None)

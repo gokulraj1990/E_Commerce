@@ -3,22 +3,21 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import AuthenticationFailed
-from .models import User
-from .serializers import UserRegSerializer
-from .validation import cust_validation
-from rest_framework.decorators import api_view
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.decorators import api_view, permission_classes
-from .permissions import IsAdmin, IsCustomer
-from django.contrib.auth.hashers import check_password, make_password
-import random
-import string
-from .utils import send_custom_email
+from django.contrib.auth.hashers import check_password
+import jwt
+from django.utils import timezone
+from datetime import timedelta
 from django.conf import settings
-from .validation import validate_password  # Import the validation function
+from .utils import send_custom_email
+from .permissions import IsAdmin, IsCustomer
+from .models import User
+from .serializers import UserRegSerializer
+from .validation import CustValidation,CustomValidationError
 
 
 @api_view(['GET'])
@@ -99,17 +98,21 @@ def login_view(request):
     try:
         email = request.data.get('email')
         password = request.data.get('password')
-        
+
         # Retrieve user by email
         user = User.objects.filter(email=email).first()
-        
+
         if user is None:
             raise AuthenticationFailed("User Not Found")
 
         # Check password
         if not check_password(password, user.password):
             raise AuthenticationFailed("Incorrect Password")
-        
+
+        # Update last login time
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login']) 
+
         # Create JWT token
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
@@ -125,15 +128,13 @@ def login_view(request):
             "Message": "Successfully Logged in",
             "role": user.role,  # Add user role to the response
             "user_id": str(user.id),  # Add user ID to the response
-            "access_token": access_token,  # Optionally include access token
-            "refresh_token": refresh_token  # Optionally include refresh token
         }
 
         return response
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    
 @api_view(['GET'])
 def logout_view(request):
     response=Response()
@@ -145,11 +146,9 @@ def logout_view(request):
 @api_view(['POST'])
 def create_user(request):
     try:
-        # Validate and serialize user data
-        valid = cust_validation(request.data)
+        valid = CustValidation(request.data)
         # Ensure the role is set to CUSTOMER by default
         request.data['role'] = User.CUSTOMER  
-        # Validate and serialize user data
         serializer = UserRegSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
@@ -167,31 +166,63 @@ def forgot_password(request):
         if not user:
             return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Generate a temporary password
-        while True:
-            temp_password = ''.join(random.choices(string.ascii_letters + string.digits + "!@#$%^&*()", k=8))
-            if validate_password(temp_password):
-                break
+        payload = {
+            'email': user.email,
+            'exp': timezone.now() + timedelta(hours=1)  # Token valid for 1 hour
+        }
+        reset_token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
 
-        # Hash the temporary password
-        hashed_temp_password = make_password(temp_password)
-        user.password = temp_password  # Set the hashed temporary password
-        user.save()
-        print(temp_password)
-        # Send the temporary password via email
+        # Send the password reset link
+        reset_link = f"http://127.0.0.1:8000/admin_console/reset-password/?token={reset_token}"
+        print(reset_link)
         send_custom_email(
             'Password Reset',
-            f'Your temporary password is: {temp_password}. Please change it after logging in.',
+            f'Click the link to reset your password: {reset_link}',
             settings.EMAIL_HOST_USER,
             [email],
             fail_silently=False,
         )
 
-        return Response({'detail': 'Temporary password sent to your email'}, status=status.HTTP_200_OK)
+        return Response({'detail': 'Password reset link sent to your email'}, status=status.HTTP_200_OK)
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+@api_view(['POST'])
+def reset_password(request):
+    try:
+        token = request.query_params.get('token', '').strip()
+        new_password = request.data.get('new_password')
+
+        if not token or not new_password:
+            return Response({'detail': 'Token and new password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Decode the token
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+            email = payload['email']
+        except jwt.ExpiredSignatureError:
+            return Response({'detail': 'Token has expired'}, status=status.HTTP_400_BAD_REQUEST)
+        except jwt.InvalidTokenError:
+            return Response({'detail': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            CustValidation({'password': new_password})
+        except CustomValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.password = new_password
+        user.save()
+
+        return Response({'Message': 'Password reset successfully'}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
@@ -201,13 +232,11 @@ def change_password(request):
         current_password = request.data.get('current_password')
         new_password = request.data.get('new_password')
 
-        user = request.jwt_user  # Assuming `jwt_user` is set correctly
+        user = request.jwt_user 
 
-        # Check current passwor
         if not check_password(current_password, user.password):
             return Response({'detail': 'Incorrect current password'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Update with new password
         user.password = new_password
         user.save()
 
