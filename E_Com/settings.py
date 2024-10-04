@@ -183,3 +183,5 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True  # Use TLS
 EMAIL_HOST_USER = 'awsclassjun2024@gmail.com' 
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+
+
