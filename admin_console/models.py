@@ -29,6 +29,7 @@ class User(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=ACTIVE)
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
     last_login = models.DateTimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
