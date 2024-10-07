@@ -20,6 +20,15 @@ from .serializers import UserRegSerializer
 from .validation import CustValidation,CustomValidationError
 
 
+def get_client_ip(request):
+    """Get the client's IP address from the request."""
+    ip = request.META.get('HTTP_X_FORWARDED_FOR')
+    if ip:
+        ip = ip.split(',')[0]  # If there are multiple proxies, take the first IP
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
 @api_view(['GET'])
 @permission_classes([IsCustomer])
 def protected_view_customer(request):
@@ -93,47 +102,44 @@ def token_refresh(request):
         return Response({'detail': 'Invalid refresh token'}, status=status.HTTP_400_BAD_REQUEST)
         
 
-@api_view(['POST'])
-def login_view(request):
-    try:
-        email = request.data.get('email')
-        password = request.data.get('password')
+# @api_view(['POST'])
+# def login_view(request):
+#     try:
+#         email = request.data.get('email')
+#         password = request.data.get('password')
 
-        # Retrieve user by email
-        user = User.objects.filter(email=email).first()
+#         user = User.objects.filter(email=email).first()
 
-        if user is None:
-            raise AuthenticationFailed("User Not Found")
+#         if user is None:
+#             raise AuthenticationFailed("User Not Found")
 
-        # Check password
-        if not check_password(password, user.password):
-            raise AuthenticationFailed("Incorrect Password")
+#         if not check_password(password, user.password):
+#             raise AuthenticationFailed("Incorrect Password")
+#         # Update last login time
+#         user.last_login = timezone.now()
+#         user.save(update_fields=['last_login']) 
 
-        # Update last login time
-        user.last_login = timezone.now()
-        user.save(update_fields=['last_login']) 
+#         # Create JWT token
+#         refresh = RefreshToken.for_user(user)
+#         access_token = str(refresh.access_token)
+#         refresh_token = str(refresh)
 
-        # Create JWT token
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
-        refresh_token = str(refresh)
+#         # Create response with token and set cookies
+#         response = Response()
+#         response.set_cookie(key='jwt_access', value=access_token, httponly=True)
+#         response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True)
 
-        # Create response with token and set cookies
-        response = Response()
-        response.set_cookie(key='jwt_access', value=access_token, httponly=True)
-        response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True)
+#         # Include role and user_id in the response
+#         response.data = {
+#             "Message": "Successfully Logged in",
+#             "role": user.role,  # Add user role to the response
+#             "user_id": str(user.id),  # Add user ID to the response
+#         }
 
-        # Include role and user_id in the response
-        response.data = {
-            "Message": "Successfully Logged in",
-            "role": user.role,  # Add user role to the response
-            "user_id": str(user.id),  # Add user ID to the response
-        }
+#         return response
 
-        return response
-
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#     except Exception as e:
+#         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
 def logout_view(request):
@@ -143,18 +149,18 @@ def logout_view(request):
     response.data={"Message":"Successfully Logged out"}
     return response
 
-@api_view(['POST'])
-def create_user(request):
-    try:
-        valid = CustValidation(request.data)
-        # Ensure the role is set to CUSTOMER by default
-        request.data['role'] = User.CUSTOMER  
-        serializer = UserRegSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response({"Success": True, "Message": "User created successfully"}, status=status.HTTP_201_CREATED)
-    except Exception as e:
-        return Response({"Success": False, "Message": "Not created", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+# @api_view(['POST'])
+# def create_user(request):
+#     try:
+#         valid = CustValidation(request.data)
+#         # Ensure the role is set to CUSTOMER by default
+#         request.data['role'] = User.CUSTOMER  
+#         serializer = UserRegSerializer(data=request.data)
+#         if serializer.is_valid(raise_exception=True):
+#             serializer.save()
+#             return Response({"Success": True, "Message": "User created successfully"}, status=status.HTTP_201_CREATED)
+#     except Exception as e:
+#         return Response({"Success": False, "Message": "Not created", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
@@ -173,8 +179,7 @@ def forgot_password(request):
         reset_token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
 
         # Send the password reset link
-        reset_link = f"http://127.0.0.1:8000/admin_console/reset-password/?token={reset_token}"
-        print(reset_link)
+        reset_link = f"http://localhost:3000/reset-password/{reset_token}"
         send_custom_email(
             'Password Reset',
             f'Click the link to reset your password: {reset_link}',
@@ -226,7 +231,6 @@ def reset_password(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsCustomer])
 def change_password(request):
     try:
         current_password = request.data.get('current_password')
@@ -242,5 +246,128 @@ def change_password(request):
 
         return Response({'detail': 'Password changed successfully'}, status=status.HTTP_200_OK)
 
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def create_user(request):
+    try:
+        # Validate request data
+        valid = CustValidation(request.data)  # Assuming this performs validation
+        if not valid.is_valid():
+            return Response({"Success": False, "Message": "Validation failed", "Errors": valid.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Set user role
+        request.data['role'] = User.CUSTOMER  
+        serializer = UserRegSerializer(data=request.data)
+
+        # Check if the serializer is valid and save the user
+        if serializer.is_valid(raise_exception=True):
+            user = serializer.save()
+
+            # Generate verification token
+            verification_token = jwt.encode(
+                {
+                    'user_id': str(user.id), 
+                    'exp': timezone.now() + timedelta(days=1)
+                }, 
+                settings.SECRET_KEY, 
+                algorithm='HS256'
+            )
+
+            # Construct verification link
+            verification_link = f"http://localhost:3000/verify-account/{verification_token}"
+            send_custom_email(
+                'Account Verification', 
+                f'Verify your account: {verification_link}', 
+                settings.EMAIL_HOST_USER, 
+                [user.email]
+            )
+
+            return Response(
+                {"Success": True, "Message": "User created successfully, verification email sent."}, 
+                status=status.HTTP_201_CREATED
+            )
+
+    except Exception as e:
+        return Response(
+            {"Success": False, "Message": "User not created", "Errors": str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+
+@api_view(['POST'])
+def verify_account(request):
+    token = request.query_params.get('token', '').strip()
+    if not token:
+        return Response({'detail': 'No token provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Decode the token
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        user_id = payload['user_id']
+        
+        # Retrieve user and verify
+        user = User.objects.get(id=user_id)
+        user.is_active = True  # Activate the user
+        user.save()
+
+        return Response({'detail': 'Account verified successfully!'}, status=status.HTTP_200_OK)
+
+    except jwt.ExpiredSignatureError:
+        return Response({'detail': 'Verification link has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+    except jwt.InvalidTokenError:
+        return Response({'detail': 'Invalid verification token.'}, status=status.HTTP_400_BAD_REQUEST)
+    except User.DoesNotExist:
+        return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+@api_view(['POST'])
+def login_view(request):
+    try:
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        # Retrieve user by email
+        user = User.objects.filter(email=email).first()
+
+        if user is None:
+            raise AuthenticationFailed("User Not Found")
+
+        if not user.is_active:
+            raise AuthenticationFailed("Account not activated. Please check your email for verification link.")
+
+        if not check_password(password, user.password):
+            raise AuthenticationFailed("Incorrect Password")
+        client_ip=get_client_ip(request)
+        # Update last login time
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login']) 
+
+        # Create JWT tokens
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        # Create response with token and set cookies
+        response = Response()
+        response.set_cookie(key='jwt_access', value=access_token, httponly=True)
+        response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True)
+
+        # Include role and user_id in the response
+        response.data = {
+            "Message": "Successfully Logged in",
+            "role": user.role,
+            "user_id": str(user.id),
+            "client_ip":client_ip
+        }
+
+        return response
+
+    except AuthenticationFailed as e:
+        return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

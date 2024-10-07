@@ -116,82 +116,6 @@ def getProducts(request):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# @api_view(['GET'])
-# def getProducts(request):
-#     try:
-#         query = request.query_params.get('name', '').strip()
-#         category = request.query_params.get('category', '').strip()
-#         price_min = request.query_params.get('price_min', None)
-#         price_max = request.query_params.get('price_max', None)
-#         stock_min = request.query_params.get('stock_min', None)
-#         stock_max = request.query_params.get('stock_max', None)
-
-#         filters = Q()
-
-#         # Construct filters based on the provided parameters
-#         if query:
-#             filters &= (Q(product__icontains=query) |
-#                         Q(model__icontains=query) |
-#                         Q(description__icontains=query))
-        
-#         if category:
-#             filters &= Q(category=category)  # Exact match for category
-
-#         if price_min is not None:
-#             filters &= Q(price__gte=float(price_min))
-#         if price_max is not None:
-#             filters &= Q(price__lte=float(price_max))
-
-#         if stock_min is not None:
-#             filters &= Q(stock__gte=int(stock_min))
-#         if stock_max is not None:
-#             filters &= Q(stock__lte=int(stock_max))
-
-#         # Query the database based on the filters
-#         products = Product.objects.filter(filters) if filters else Product.objects.all()
-
-#         # Serialize the results
-#         serializer = ProductSerializer(products, many=True)
-#         return Response({"Success": True, "Products": serializer.data}, status=status.HTTP_200_OK)
-
-#     except ValidationError as e:
-#         return Response({"Success": False, "Message": "Invalid input", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-#     except Exception as e:
-#         return Response({"Success": False, "Message": "Could not retrieve products", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
 @api_view(['GET'])
 def getProductsByCategory(request, category):
     try:
@@ -241,3 +165,8 @@ def importProducts(request):
             serializer.save()
 
     return Response({"Success": True, "Message": "Products imported successfully"}, status=status.HTTP_201_CREATED)
+
+
+
+
+

@@ -115,6 +115,28 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'djongo',
+#         'NAME': 'your_database_name',
+#         'ENFORCE_SCHEMA': False,  # Set to False if you want to skip schema validation
+#         'CLIENT': {
+#             'host': 'mongodb://localhost:27017',  # Adjust this according to your MongoDB setup
+#             'username': 'your_username',  # Optional
+#             'password': 'your_password',  # Optional
+#         }
+#     }
+# }
+
+
+
+
+
+
+
+
+
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -172,7 +194,9 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-
+# TWILIO_ACCOUNT_SID = 'your_account_sid'
+# TWILIO_AUTH_TOKEN = 'your_auth_token'
+# TWILIO_PHONE_NUMBER = 'your_twilio_phone_number'
 
 load_dotenv()
 
