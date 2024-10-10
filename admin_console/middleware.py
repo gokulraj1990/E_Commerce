@@ -17,7 +17,6 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
             user = User.objects.get(id=user_id)
             request.jwt_user = user
             request.user_role = user.role
-            
             # Role flags
             request.is_admin = (user.role == 'Admin')
             request.is_customer = (user.role == 'Customer')

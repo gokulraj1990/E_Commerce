@@ -5,8 +5,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.exceptions import TokenError
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth.hashers import check_password
 import jwt
@@ -255,8 +253,6 @@ def create_user(request):
     try:
         # Validate request data
         valid = CustValidation(request.data)  # Assuming this performs validation
-        if not valid.is_valid():
-            return Response({"Success": False, "Message": "Validation failed", "Errors": valid.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         # Set user role
         request.data['role'] = User.CUSTOMER  

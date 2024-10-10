@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'user_mgmt',
     'product_mgmt',
     'admin_console',
+    'cart_mgmt',
     'corsheaders',
 ]
 
@@ -182,13 +183,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
    "http://192.168.29.98:3000",  # React app IP
+   "http://www.techkt.in"
    
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (not recommended for production)
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
