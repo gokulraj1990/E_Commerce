@@ -5,11 +5,10 @@ from django.contrib.auth.models import AnonymousUser
 from .models import CustomerProfile
 from .serializers import CustomerProfileSerializer
 from admin_console.permissions import IsAdmin, IsCustomer
-
 from django.http import HttpResponse
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-
+from django.contrib.auth.hashers import check_password,make_password
 
 @api_view(['GET'])
 @permission_classes([IsCustomer])
@@ -29,12 +28,15 @@ def profile_create(request):
     if isinstance(request.jwt_user, AnonymousUser):
         return Response({'detail': 'Unauthorized'}, status=401)
 
-    serializer = CustomerProfileSerializer(data=request.data)
+    # Check if the user already has a profile
+    if CustomerProfile.objects.filter(user=request.jwt_user).exists():
+        return Response({'error': 'Profile already exists for this user.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    serializer = CustomerProfileSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save(user=request.jwt_user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
+        return Response({'success': 'Profile created successfully'}, status=status.HTTP_201_CREATED)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['PUT'])
@@ -45,7 +47,29 @@ def profile_update(request):
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'success': 'Profile updated successfully'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def change_password(request):
+
+    try:
+        user = request.jwt_user
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if not check_password(current_password, user.password):
+            return Response({'detail': 'Incorrect current password'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.password = new_password
+        user.save()
+
+        return Response({'success': 'Password changed successfully'}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 @api_view(['GET'])

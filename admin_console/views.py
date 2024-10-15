@@ -6,7 +6,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.decorators import api_view, permission_classes
-from django.contrib.auth.hashers import check_password
+from django.contrib.auth.hashers import check_password,make_password
 import jwt
 from django.utils import timezone
 from datetime import timedelta
@@ -229,26 +229,6 @@ def reset_password(request):
 
 
 @api_view(['POST'])
-def change_password(request):
-    try:
-        current_password = request.data.get('current_password')
-        new_password = request.data.get('new_password')
-
-        user = request.jwt_user 
-
-        if not check_password(current_password, user.password):
-            return Response({'detail': 'Incorrect current password'}, status=status.HTTP_400_BAD_REQUEST)
-
-        user.password = new_password
-        user.save()
-
-        return Response({'detail': 'Password changed successfully'}, status=status.HTTP_200_OK)
-
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['POST'])
 def create_user(request):
     try:
         # Validate request data
@@ -334,7 +314,6 @@ def login_view(request):
 
         if not user.is_active:
             raise AuthenticationFailed("Account not activated. Please check your email for verification link.")
-
         if not check_password(password, user.password):
             raise AuthenticationFailed("Incorrect Password")
         client_ip=get_client_ip(request)
@@ -349,8 +328,8 @@ def login_view(request):
 
         # Create response with token and set cookies
         response = Response()
-        response.set_cookie(key='jwt_access', value=access_token, httponly=True)
-        response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True)
+        response.set_cookie(key='jwt_access', value=access_token, httponly=True,  samesite='Lax',secure=False)
+        response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True,  samesite='Lax',secure=False)
 
         # Include role and user_id in the response
         response.data = {
