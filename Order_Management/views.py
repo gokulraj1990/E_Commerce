@@ -1,24 +1,13 @@
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import Order
-from .serializers import OrderSerializer
-
-@api_view(['POST'])
-def createOrder(request):
-    serializer = OrderSerializer(data=request.data)
-    if serializer.is_valid():
-        order = serializer.save()  # Save the order
-        return Response({
-            "message": "Order created successfully!",
-            "order": serializer.data
-        }, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+from cart_mgmt.models import Order, OrderItem
+from cart_mgmt.serializers import OrderSerializer
 
 @api_view(['PUT'])
-def updateOrder(request, orderID):
+def update_order(request, order_id):
     try:
-        order = Order.objects.get(orderID=orderID)
+        order = Order.objects.get(order_id=order_id)
     except Order.DoesNotExist:
         return Response({"message": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -32,27 +21,32 @@ def updateOrder(request, orderID):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['DELETE'])
-def cancelOrder(request, orderID):
+def cancel_order(request, order_id):
     try:
-        order = Order.objects.get(orderID=orderID)
+        order = Order.objects.get(order_id=order_id)
         order.delete()  # Delete the order
         return Response({"message": "Order canceled successfully!"}, status=status.HTTP_204_NO_CONTENT)
     except Order.DoesNotExist:
         return Response({"message": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['GET'])
-def viewOrderDetails(request, orderID):
+def view_order_details(request, order_id):
     try:
-        order = Order.objects.get(orderID=orderID)
+        order = Order.objects.get(order_id=order_id)
         serializer = OrderSerializer(order)
         return Response(serializer.data)
     except Order.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['GET'])
-def trackOrder(request, orderID):
+def track_order(request, order_id):
     try:
-        order = Order.objects.get(orderID=orderID)
-        return Response({"orderID": order.orderID, "status": order.status})
+        order = Order.objects.get(order_id=order_id)
+        return Response({
+            "order_id": order.order_id,
+            "is_paid": order.is_paid,  # You can include more fields as needed
+            "total_amount": order.total_amount,
+            "status": "Paid" if order.is_paid else "Pending"
+        })
     except Order.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
