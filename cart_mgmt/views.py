@@ -105,7 +105,19 @@ def checkout(request):
         order.is_paid = True
         order.save()
 
+ # Process each cart item, reduce stock and create order items
         for item in cart_items:
+            if item.product.stock < item.quantity:
+                return Response({
+                    "Success": False,
+                    "Message": f"Insufficient stock for {item.product.name}. Only {item.product.stock} available."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Reduce the stock of the product
+            item.product.stock -= item.quantity
+            item.product.save()
+
+            # Create the corresponding order item
             OrderItem.objects.create(order=order, product=item.product, quantity=item.quantity)
 
         cart_items.delete()
@@ -190,3 +202,114 @@ def process_payment(request, order_id):
         "UPI_QR_Code": qr_base64,
         "UPI_Link": upi_payment_url
     }, status=status.HTTP_200_OK)
+
+
+
+
+# import razorpay
+# from django.conf import settings
+# from rest_framework.decorators import api_view
+# from rest_framework.response import Response
+# from rest_framework import status
+# from django.contrib.auth.models import AnonymousUser
+# from .models import CartItem, CustomerProfile, Order, OrderItem
+# from .serializers import OrderSerializer
+# from .utils import send_custom_email  # Assuming you have a utility function for sending emails
+
+# @api_view(['POST'])
+# def checkout(request):
+#     user = request.jwt_user
+#     if isinstance(user, AnonymousUser):
+#         return Response({"Success": False, "Message": "User is not authenticated"}, status=status.HTTP_403_FORBIDDEN)
+
+#     cart_items = CartItem.objects.filter(user=user)
+#     if not cart_items.exists():
+#         return Response({"Success": False, "Message": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
+
+#     customer_profile = CustomerProfile.objects.get(user=user)
+
+#     total_amount = sum(item.product.price * item.quantity for item in cart_items) * 100  # Convert to paise
+
+#     # Create an order in Razorpay
+#     razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+#     razorpay_order = razorpay_client.order.create({
+#         'amount': total_amount,
+#         'currency': 'INR',
+#         'payment_capture': '1'  # Auto-capture payment
+#     })
+
+#     if razorpay_order['id']:
+#         order = Order.objects.create(
+#             user=user,
+#             total_amount=total_amount / 100,  # Store amount in original currency (for display)
+#             address=customer_profile.address,
+#             city=customer_profile.city,
+#             state=customer_profile.state,
+#             pincode=customer_profile.pincode,
+#             razorpay_order_id=razorpay_order['id']  # Store Razorpay order ID
+#         )
+
+#         # Send the payment order details back to the client
+#         return Response({
+#             "Success": True,
+#             "Message": "Order created successfully",
+#             "Order ID": order.order_id,
+#             "Razorpay Order ID": razorpay_order['id'],
+#             "Order Details": OrderSerializer(order).data
+#         }, status=status.HTTP_201_CREATED)
+#     else:
+#         return Response({"Success": False, "Message": "Failed to create Razorpay order"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# # Endpoint to verify payment after the client has made the payment
+# @api_view(['POST'])
+# def verify_payment(request):
+#     user = request.jwt_user
+#     if isinstance(user, AnonymousUser):
+#         return Response({"Success": False, "Message": "User is not authenticated"}, status=status.HTTP_403_FORBIDDEN)
+
+#     razorpay_order_id = request.data.get('razorpay_order_id')
+#     razorpay_payment_id = request.data.get('razorpay_payment_id')
+#     razorpay_signature = request.data.get('razorpay_signature')
+
+#     # Verify the payment signature
+#     razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+#     try:
+#         razorpay_client.utility.verify_payment_signature({
+#             'razorpay_order_id': razorpay_order_id,
+#             'razorpay_payment_id': razorpay_payment_id,
+#             'razorpay_signature': razorpay_signature
+#         })
+
+#         # Payment is successful; update the order
+#         order = Order.objects.get(razorpay_order_id=razorpay_order_id)
+#         order.is_paid = True
+#         order.save()
+
+#         # Create order items
+#         cart_items = CartItem.objects.filter(user=user)
+#         for item in cart_items:
+#             OrderItem.objects.create(order=order, product=item.product, quantity=item.quantity)
+
+#         cart_items.delete()
+
+#         # Send confirmation email
+#         subject = 'Order Confirmation'
+#         message = (
+#             f'Thank you for your order, {user.firstname}!\n'
+#             f'Your order ID is: {order.order_id}\n'
+#             f'Total Amount: {order.total_amount}\n'
+#             f'Shipping Address: {order.address}, {order.city}, {order.state}, {order.pincode}\n'
+#         )
+#         recipient_list = [user.email]
+#         send_custom_email(subject, message, settings.EMAIL_HOST_USER, recipient_list)
+
+#         return Response({
+#             "Success": True,
+#             "Message": "Payment verified and order confirmed",
+#             "Order ID": order.order_id,
+#             "Order Details": OrderSerializer(order).data
+#         }, status=status.HTTP_200_OK)
+
+#     except Exception as e:
+#         return Response({"Success": False, "Message": "Payment verification failed"}, status=status.HTTP_400_BAD_REQUEST)

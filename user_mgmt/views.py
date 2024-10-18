@@ -8,7 +8,7 @@ from admin_console.permissions import IsAdmin, IsCustomer
 from django.http import HttpResponse
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from django.contrib.auth.hashers import check_password,make_password
+from django.contrib.auth.hashers import check_password
 
 @api_view(['GET'])
 @permission_classes([IsCustomer])
