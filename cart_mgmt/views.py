@@ -11,6 +11,7 @@ from django.contrib.auth.models import AnonymousUser
 import qrcode
 import base64
 from io import BytesIO
+from .payment import process_cashfree_payment
 
 
 @api_view(['POST'])
@@ -99,7 +100,9 @@ def checkout(request):
         pincode=pincode
     )
 
-    payment_success = simulate_payment(total_amount)
+    payment_success = process_cashfree_payment(total_amount,user)
+
+    # payment_success = simulate_payment(total_amount)
 
     if payment_success:
         order.is_paid = True
@@ -145,7 +148,6 @@ def checkout(request):
 
 
 def simulate_payment(amount):
-    # Simulate payment processing
     return amount > 0  # Simulate successful payment for positive amounts
 
 
@@ -175,7 +177,7 @@ def process_payment(request, order_id):
     if isinstance(user, AnonymousUser):
         return Response({"Success": False, "Message": "User is not authenticated"}, status=status.HTTP_403_FORBIDDEN)
 
-    order = get_object_or_404(Order, id=order_id, user=user)
+    order = get_object_or_404(Order, order_id=order_id, user=user)
 
     if order.is_paid:
         return Response({"Success": False, "Message": "Order is already paid"}, status=status.HTTP_400_BAD_REQUEST)
@@ -198,7 +200,7 @@ def process_payment(request, order_id):
     return Response({
         "Success": True,
         "Message": "Scan the QR code to complete payment",
-        "OrderID": order.id,
+        "OrderID": order.order_id,
         "UPI_QR_Code": qr_base64,
         "UPI_Link": upi_payment_url
     }, status=status.HTTP_200_OK)
