@@ -6,7 +6,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.decorators import api_view, permission_classes
-from django.contrib.auth.hashers import check_password,make_password
+from django.contrib.auth.hashers import check_password
 import jwt
 from django.utils import timezone
 from datetime import timedelta
@@ -16,6 +16,11 @@ from .permissions import IsAdmin, IsCustomer
 from .models import User
 from .serializers import UserRegSerializer
 from .validation import CustValidation,CustomValidationError
+from django.utils.crypto import get_random_string
+from django.contrib.auth import get_user_model
+from twilio.rest import Client
+from django.conf import settings
+
 
 
 def get_client_ip(request):
@@ -346,3 +351,78 @@ def login_view(request):
     
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['POST'])
+def otp_login_view(request):
+    phone_number = request.data.get('phone_number')
+    
+    # Validate phone number format if necessary
+
+    # Check if the user exists
+    user = User.objects.filter(mobilenumber=phone_number).first()
+
+    if not user:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Generate OTP and send it
+    otp = get_random_string(6, allowed_chars='0123456789')
+    request.session[f'otp_{phone_number}'] = otp
+    
+    plus_phone_number="+91"+phone_number
+
+    # print(plus_phone_number,otp)
+
+    # Send OTP using Twilio
+    client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+    client.messages.create(
+        body=f"Your OTP is {otp}",
+        from_=settings.TWILIO_PHONE_NUMBER,
+        to=plus_phone_number
+    )
+
+    return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def otp_verify_view(request):
+    phone_number = request.data.get('phone_number')
+    otp = request.data.get('otp')
+
+    saved_otp = request.session.get(f'otp_{phone_number}')
+    if saved_otp != otp:
+        return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Retrieve the user
+    user = User.objects.filter(mobilenumber=phone_number).first()
+    if not user:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Update last login time
+    user.last_login = timezone.now()
+    user.save(update_fields=['last_login'])
+
+    # Create JWT tokens
+    refresh = RefreshToken.for_user(user)
+    access_token = str(refresh.access_token)
+    refresh_token = str(refresh)
+
+    # Create response with tokens
+    response = Response({
+        "message": "Successfully logged in",
+        "access": access_token,
+        "refresh": refresh_token,
+        "user_id": str(user.id),
+        "role": user.role,
+        "client_ip": get_client_ip(request)  # Assuming you have a utility to get IP
+    })
+
+    # Set cookies if necessary
+    response.set_cookie(key='jwt_access', value=access_token, httponly=True, samesite='Lax', secure=False)
+    response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True, samesite='Lax', secure=False)
+
+    # Clear OTP from session after successful login
+    del request.session[f'otp_{phone_number}']
+
+    return response
