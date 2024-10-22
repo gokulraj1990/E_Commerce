@@ -31,6 +31,9 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 
+
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -196,11 +199,13 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-# TWILIO_ACCOUNT_SID = 'your_account_sid'
-# TWILIO_AUTH_TOKEN = 'your_auth_token'
-# TWILIO_PHONE_NUMBER = 'your_twilio_phone_number'
 
 load_dotenv()
+
+
+TWILIO_ACCOUNT_SID = os.getenv('ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('AUTH_TOKEN')
+TWILIO_PHONE_NUMBER = os.getenv('PHONE_NUMBER')
 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

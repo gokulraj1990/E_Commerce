@@ -1,6 +1,7 @@
 from django.db import models
 from admin_console.models import User
 from product_mgmt.models import Product
+import uuid
 
 class CartItem(models.Model):
 
@@ -11,9 +12,11 @@ class CartItem(models.Model):
     def __str__(self):
         return f"{self.product.product} (x{self.quantity})"
 
-class Order(models.Model):
+from django.db import models
+import uuid
 
-    order_id = models.AutoField(primary_key=True)
+class Order(models.Model):
+    order_id = models.CharField(max_length=20, primary_key=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -25,8 +28,20 @@ class Order(models.Model):
     state = models.CharField(max_length=100)
     pincode = models.CharField(max_length=6)
 
+    def save(self, *args, **kwargs):
+        if not self.order_id:  # Only set the order_id if it hasn't been set yet
+            last_order = Order.objects.order_by('created_at').last()
+            if last_order:
+                last_order_id = int(last_order.order_id.split('-')[-1])
+                new_id = f"ORD-{last_order_id + 1}"
+            else:
+                new_id = "ORD-1"
+            self.order_id = new_id
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Order {self.order_id} by {self.user.firstname}"
+
 
 class OrderItem(models.Model):
     
