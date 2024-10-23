@@ -9,6 +9,8 @@ from django.http import HttpResponse
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from django.contrib.auth.hashers import check_password
+from admin_console.models import User
+from admin_console.serializers import UserRegSerializer
 
 @api_view(['GET'])
 @permission_classes([IsCustomer])
@@ -49,6 +51,17 @@ def profile_update(request):
         return Response(serializer.data)
     return Response({'success': 'Profile updated successfully'}, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['PUT'])
+@permission_classes([IsCustomer])
+def deactivate_account(request):
+    try:
+        profile = User.objects.get(id=request.jwt_user.id)
+        print(profile)
+        profile.status="Deactivated"
+        profile.save()
+        return Response({'success': 'Profile deactivated successfully'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 def change_password(request):
