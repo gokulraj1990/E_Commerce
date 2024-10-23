@@ -6,7 +6,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.decorators import api_view, permission_classes
-from django.contrib.auth.hashers import check_password
+from django.contrib.auth.hashers import check_password, make_password
 import jwt
 from django.utils import timezone
 from datetime import timedelta
@@ -105,44 +105,6 @@ def token_refresh(request):
         return Response({'detail': 'Invalid refresh token'}, status=status.HTTP_400_BAD_REQUEST)
         
 
-# @api_view(['POST'])
-# def login_view(request):
-#     try:
-#         email = request.data.get('email')
-#         password = request.data.get('password')
-
-#         user = User.objects.filter(email=email).first()
-
-#         if user is None:
-#             raise AuthenticationFailed("User Not Found")
-
-#         if not check_password(password, user.password):
-#             raise AuthenticationFailed("Incorrect Password")
-#         # Update last login time
-#         user.last_login = timezone.now()
-#         user.save(update_fields=['last_login']) 
-
-#         # Create JWT token
-#         refresh = RefreshToken.for_user(user)
-#         access_token = str(refresh.access_token)
-#         refresh_token = str(refresh)
-
-#         # Create response with token and set cookies
-#         response = Response()
-#         response.set_cookie(key='jwt_access', value=access_token, httponly=True)
-#         response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True)
-
-#         # Include role and user_id in the response
-#         response.data = {
-#             "Message": "Successfully Logged in",
-#             "role": user.role,  # Add user role to the response
-#             "user_id": str(user.id),  # Add user ID to the response
-#         }
-
-#         return response
-
-#     except Exception as e:
-#         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
 def logout_view(request):
@@ -151,19 +113,6 @@ def logout_view(request):
     response.delete_cookie('jwt_access')
     response.data={"Message":"Successfully Logged out"}
     return response
-
-# @api_view(['POST'])
-# def create_user(request):
-#     try:
-#         valid = CustValidation(request.data)
-#         # Ensure the role is set to CUSTOMER by default
-#         request.data['role'] = User.CUSTOMER  
-#         serializer = UserRegSerializer(data=request.data)
-#         if serializer.is_valid(raise_exception=True):
-#             serializer.save()
-#             return Response({"Success": True, "Message": "User created successfully"}, status=status.HTTP_201_CREATED)
-#     except Exception as e:
-#         return Response({"Success": False, "Message": "Not created", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
@@ -278,6 +227,132 @@ def create_user(request):
         )
     
 
+
+@api_view(['POST'])
+def resend_verification(request):
+    try:
+        email = request.data.get('email')
+
+        # Retrieve user by email
+        user = User.objects.filter(email=email).first()
+
+        if user is None:
+            raise AuthenticationFailed("User Not Found")
+
+        if user.status == "Suspended":
+            raise AuthenticationFailed("User account suspended")
+
+        if not user.is_active:
+            # Generate verification token
+            verification_token = jwt.encode(
+                {
+                    'user_id': str(user.id), 
+                    'exp': timezone.now() + timedelta(days=1)
+                }, 
+                settings.SECRET_KEY, 
+                algorithm='HS256'
+            )
+
+            # Construct verification link
+            verification_link = f"http://localhost:3000/verify-account/{verification_token}"
+            send_custom_email(
+                'Account Verification', 
+                f'Verify your account: {verification_link}', 
+                settings.EMAIL_HOST_USER, 
+                [user.email]
+            )
+
+            return Response(
+                {"Success": True, "Message": "Verification email sent."}, 
+                status=status.HTTP_201_CREATED
+            )
+        else:
+            return Response(
+                {"Success": False, "Message": "User account is already active."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    except Exception as e:
+        return Response(
+            {"Success": False, "Message": "An error occurred", "Errors": str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['POST'])
+def reactivate_verification(request):
+    try:
+        email = request.data.get('email')
+
+        # Retrieve user by email
+        user = User.objects.filter(email=email).first()
+
+        if user is None:
+            raise AuthenticationFailed("User Not Found")
+
+        if user.status=="Suspended":
+            raise AuthenticationFailed("User account suspended")
+
+        if user.status=="Deactivated":
+            # Generate verification token
+            verification_token = jwt.encode(
+                {
+                    'user_id': str(user.id), 
+                    'exp': timezone.now() + timedelta(days=1)
+                }, 
+                settings.SECRET_KEY, 
+                algorithm='HS256'
+            )
+
+            # Construct verification link
+            verification_link = f"http://localhost:3000/activate-account/{verification_token}"
+            send_custom_email(
+                'Account Reactivation', 
+                f'Activate your account: {verification_link}', 
+                settings.EMAIL_HOST_USER, 
+                [user.email]
+            )
+
+            return Response(
+                {"Success": True, "Message": "verification email sent."}, 
+                status=status.HTTP_201_CREATED
+            )
+
+    except Exception as e:
+        return Response(
+            {"Success": False, "Message": "User not found", "Errors": str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+
+
+@api_view(['POST'])
+def reactivate_account(request):
+    token = request.query_params.get('token', '').strip()
+    if not token:
+        return Response({'detail': 'No token provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Decode the token
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        user_id = payload['user_id']
+        
+        # Retrieve user and verify
+        user = User.objects.get(id=user_id)
+        user.status = "Active"  # Activate the user
+        user.save()
+
+        return Response({'detail': 'Account activated successfully!'}, status=status.HTTP_200_OK)
+
+    except jwt.ExpiredSignatureError:
+        return Response({'detail': 'Verification link has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+    except jwt.InvalidTokenError:
+        return Response({'detail': 'Invalid verification token.'}, status=status.HTTP_400_BAD_REQUEST)
+    except User.DoesNotExist:
+        return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+
 @api_view(['POST'])
 def verify_account(request):
     token = request.query_params.get('token', '').strip()
@@ -319,6 +394,10 @@ def login_view(request):
 
         if not user.is_active:
             raise AuthenticationFailed("Account not activated. Please check your email for verification link.")
+        if user.status=="Suspended":
+            raise AuthenticationFailed("Account Suspended")
+        if user.status=="Deactivated":
+            raise AuthenticationFailed("Account Deactivated. Click resend verification to activate")
         if not check_password(password, user.password):
             raise AuthenticationFailed("Incorrect Password")
         client_ip=get_client_ip(request)
@@ -365,7 +444,13 @@ def otp_login_view(request):
 
     if not user:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
+    
+    if not user.is_active:
+            raise AuthenticationFailed("Account not activated. Please check your email for verification link.")
+    if user.status=="Suspended":
+            raise AuthenticationFailed("Account Suspended")
+    if user.status=="Deactivated":
+            raise AuthenticationFailed("Account Deactivated. Click resend verification to activate")
     # Generate OTP and send it
     otp = get_random_string(6, allowed_chars='0123456789')
     request.session[f'otp_{phone_number}'] = otp

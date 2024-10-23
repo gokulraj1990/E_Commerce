@@ -1,6 +1,6 @@
 from django.db import models
-from django.contrib.auth.hashers import make_password
 import uuid
+from django.contrib.auth.hashers import make_password
 
 class User(models.Model):
     ADMIN = 'Admin'
@@ -8,10 +8,12 @@ class User(models.Model):
 
     ACTIVE = 'Active'
     SUSPENDED = 'Suspended'
+    DEACTIVATED = 'Deactivated'
 
     STATUS_CHOICES = [
         (ACTIVE, 'Active'),
         (SUSPENDED, 'Suspended'),
+        (DEACTIVATED, 'Deactivated')
     ]
 
     ROLE_CHOICES = [
@@ -33,9 +35,20 @@ class User(models.Model):
     last_login = models.DateTimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
-        if self.password and not self.password.startswith('$'):
+        # Check if we need to hash the password
+        if self.pk is None or (self.pk is not None and 'password' in self.get_dirty_fields()):
             self.password = make_password(self.password)
         super().save(*args, **kwargs)
+
+    def get_dirty_fields(self):
+        """Helper method to check which fields have changed."""
+        dirty_fields = {}
+        if self.pk:
+            original = User.objects.get(pk=self.pk)
+            for field in self._meta.fields:
+                if getattr(self, field.name) != getattr(original, field.name):
+                    dirty_fields[field.name] = getattr(self, field.name)
+        return dirty_fields
 
     def view_user_details(self):
         return {
