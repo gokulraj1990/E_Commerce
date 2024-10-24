@@ -2,27 +2,45 @@ from django.contrib.auth.models import AnonymousUser
 from django.utils.deprecation import MiddlewareMixin
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError
-from .models import User
+from .models import User, Admin  # Import both models
 
 class JWTAuthenticationMiddleware(MiddlewareMixin):
     def process_request(self, request):
         token = request.COOKIES.get('jwt_access')
         if not token:
             request.jwt_user = AnonymousUser()
+            request.is_admin = False
+            request.is_customer = False
             return
 
         try:
+            # Decode the access token
             access_token = AccessToken(token)
             user_id = access_token['user_id']
-            user = User.objects.get(id=user_id)
-            request.jwt_user = user
-            request.user_role = user.role
-            # Role flags
-            request.is_admin = (user.role == 'Admin')
-            request.is_customer = (user.role == 'Customer')
+            
+            # Attempt to get the user from the User model first
+            try:
+                user = User.objects.get(id=user_id)
+                request.jwt_user = user
+                request.is_admin = False
+                request.is_customer = (user.role == 'Customer')
+            except User.DoesNotExist:
+                # If not found, check the Admin model
+                try:
+                    admin = Admin.objects.get(id=user_id)
+                    request.jwt_user = admin
+                    request.is_admin = True
+                    request.is_customer = False
+                except Admin.DoesNotExist:
+                    # If neither found, set as anonymous
+                    request.jwt_user = AnonymousUser()
+                    request.is_admin = False
+                    request.is_customer = False
 
-        except (TokenError, User.DoesNotExist):
+        except TokenError:
             request.jwt_user = AnonymousUser()
+            request.is_admin = False
+            request.is_customer = False
 
 
 
@@ -45,13 +63,30 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
 
 
 
-# #middleware.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # from django.contrib.auth.models import AnonymousUser
 # from django.utils.deprecation import MiddlewareMixin
 # from rest_framework_simplejwt.tokens import AccessToken
 # from rest_framework_simplejwt.exceptions import TokenError
 # from .models import User
-
 
 # class JWTAuthenticationMiddleware(MiddlewareMixin):
 #     def process_request(self, request):
@@ -65,10 +100,31 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
 #             user_id = access_token['user_id']
 #             user = User.objects.get(id=user_id)
 #             request.jwt_user = user
-#         except TokenError as e:
+#             request.user_role = user.role
+#             # Role flags
+#             request.is_admin = (user.role == 'Admin')
+#             request.is_customer = (user.role == 'Customer')
+
+#         except (TokenError, User.DoesNotExist):
 #             request.jwt_user = AnonymousUser()
-#         except User.DoesNotExist as e:
-#             request.jwt_user = AnonymousUser()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
