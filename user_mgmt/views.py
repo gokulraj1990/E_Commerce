@@ -11,6 +11,7 @@ from reportlab.pdfgen import canvas
 from django.contrib.auth.hashers import check_password
 from admin_console.models import User
 from admin_console.serializers import UserRegSerializer
+import csv
 
 @api_view(['GET'])
 @permission_classes([IsCustomer])
@@ -81,6 +82,63 @@ def change_password(request):
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAdmin])
+def list_users(request):
+    users = User.objects.all()
+    serializer = UserRegSerializer(users, many=True)
+    return Response({"Success": True, "Users": serializer.data}, status=status.HTTP_200_OK)
+
+@api_view(['PATCH'])
+@permission_classes([IsAdmin])
+def update_user_status(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"Success": False, "Message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    account_status = request.data.get('status')
+    if account_status not in dict(User.STATUS_CHOICES).keys():
+        return Response({"Success": False, "Message": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.account_status = account_status
+    user.save()
+
+    return Response({"Success": True, "Message": "User status updated successfully."}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdmin])
+def download_user_list_csv(request):
+    # Create a HttpResponse with CSV content-type
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="user_list.csv"'
+
+    # Create a CSV writer
+    writer = csv.writer(response)
+    headers = ["User ID", "First Name", "Last Name", "Email", "Mobile No", "Role", "Status"]
+    writer.writerow(headers)
+
+    # Fetch users
+    users = User.objects.all()
+
+    # Write user data to CSV
+    for user in users:
+        writer.writerow([
+            user.id, 
+            user.firstname, 
+            user.lastname, 
+            user.email,          
+            user.mobilenumber,   
+            user.role, 
+            user.status
+        ])
+
+    return response
+
 
 
 

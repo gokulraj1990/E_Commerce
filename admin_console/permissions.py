@@ -1,5 +1,5 @@
 from rest_framework import permissions
-from .models import User
+from .models import User, Admin
 
 class IsAdmin(permissions.BasePermission):
     """
@@ -7,7 +7,7 @@ class IsAdmin(permissions.BasePermission):
     """
     def has_permission(self, request, view):
         # Check if the user is authenticated and has an admin role
-        return isinstance(request.jwt_user, User) and request.is_admin
+        return isinstance(request.jwt_user, Admin) or (isinstance(request.jwt_user, User) and request.is_admin)
 
 class IsCustomer(permissions.BasePermission):
     """

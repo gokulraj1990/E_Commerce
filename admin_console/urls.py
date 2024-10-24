@@ -1,8 +1,8 @@
 #urls.py
 
 from django.urls import path
-from .views import create_user,login_view,protected_view_admin,protected_view_customer ,logout_view,token_refresh,forgot_password,reset_password,verify_account,otp_login_view,otp_verify_view,reactivate_account,resend_verification,reactivate_verification
-
+from .views import create_user,login_view,protected_view_customer ,logout_view,token_refresh,forgot_password,reset_password,verify_account,otp_login_view,otp_verify_view,reactivate_account,resend_verification,reactivate_verification
+from .views import admin_login_view,create_admin,protected_view_admin
 
 urlpatterns = [
 path('create/', create_user, name='create_user'),
@@ -19,6 +19,9 @@ path('reactivate-verification/', reactivate_verification, name='reactivate_verif
 path('activate-account/', reactivate_account, name='reactivate_account'),
 path('otp-login/', otp_login_view, name='otp-login'),
 path('otp-verify/', otp_verify_view, name='otp-verify'),
+path('admin-login/', admin_login_view, name='admin-login'),
+path('create-admin/', create_admin, name='create-admin'),
+
 ]
 
 
