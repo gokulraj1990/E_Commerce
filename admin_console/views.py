@@ -1,5 +1,5 @@
 #views.py
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import AuthenticationFailed
@@ -13,8 +13,8 @@ from datetime import timedelta
 from django.conf import settings
 from .utils import send_custom_email
 from .permissions import IsAdmin, IsCustomer
-from .models import User
-from .serializers import UserRegSerializer
+from .models import User,Admin
+from .serializers import UserRegSerializer,AdminRegSerializer
 from .validation import CustValidation,CustomValidationError
 from django.utils.crypto import get_random_string
 from django.contrib.auth import get_user_model
@@ -181,21 +181,19 @@ def reset_password(request):
     except Exception as e:
         return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 @api_view(['POST'])
 def create_user(request):
     try:
-        # Validate request data
-        valid = CustValidation(request.data)  # Assuming this performs validation
+        # Validate request data (implement your validation logic)
+        valid = CustValidation(request.data)
 
         # Set user role
         request.data['role'] = User.CUSTOMER  
         serializer = UserRegSerializer(data=request.data)
-
+        
         # Check if the serializer is valid and save the user
         if serializer.is_valid(raise_exception=True):
             user = serializer.save()
-
             # Generate verification token
             verification_token = jwt.encode(
                 {
@@ -220,12 +218,17 @@ def create_user(request):
                 status=status.HTTP_201_CREATED
             )
 
+    except serializers.ValidationError as e:
+        return Response(
+            {"Success": False, "Message": "User not created", "Errors": e.detail}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
     except Exception as e:
         return Response(
             {"Success": False, "Message": "User not created", "Errors": str(e)}, 
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
 
 
 @api_view(['POST'])
@@ -239,7 +242,7 @@ def resend_verification(request):
         if user is None:
             raise AuthenticationFailed("User Not Found")
 
-        if user.status == "Suspended":
+        if user.account_status == "Suspended":
             raise AuthenticationFailed("User account suspended")
 
         if not user.is_active:
@@ -290,10 +293,10 @@ def reactivate_verification(request):
         if user is None:
             raise AuthenticationFailed("User Not Found")
 
-        if user.status=="Suspended":
+        if user.account_status=="Suspended":
             raise AuthenticationFailed("User account suspended")
 
-        if user.status=="Deactivated":
+        if user.account_status=="Deactivated":
             # Generate verification token
             verification_token = jwt.encode(
                 {
@@ -340,7 +343,7 @@ def reactivate_account(request):
         
         # Retrieve user and verify
         user = User.objects.get(id=user_id)
-        user.status = "Active"  # Activate the user
+        user.account_status = "Active"  # Activate the user
         user.save()
 
         return Response({'detail': 'Account activated successfully!'}, status=status.HTTP_200_OK)
@@ -394,9 +397,9 @@ def login_view(request):
 
         if not user.is_active:
             raise AuthenticationFailed("Account not activated. Please check your email for verification link.")
-        if user.status=="Suspended":
+        if user.account_status=="Suspended":
             raise AuthenticationFailed("Account Suspended")
-        if user.status=="Deactivated":
+        if user.account_status=="Deactivated":
             raise AuthenticationFailed("Account Deactivated. Click resend verification to activate")
         if not check_password(password, user.password):
             raise AuthenticationFailed("Incorrect Password")
@@ -447,9 +450,9 @@ def otp_login_view(request):
     
     if not user.is_active:
             raise AuthenticationFailed("Account not activated. Please check your email for verification link.")
-    if user.status=="Suspended":
+    if user.account_status=="Suspended":
             raise AuthenticationFailed("Account Suspended")
-    if user.status=="Deactivated":
+    if user.account_status=="Deactivated":
             raise AuthenticationFailed("Account Deactivated. Click resend verification to activate")
     # Generate OTP and send it
     otp = get_random_string(6, allowed_chars='0123456789')
@@ -511,3 +514,107 @@ def otp_verify_view(request):
     del request.session[f'otp_{phone_number}']
 
     return response
+
+
+
+
+
+
+@api_view(['POST'])
+@permission_classes([IsAdmin])
+def create_admin(request):
+    try:
+        # Validate request data (implement your validation logic)
+        valid = CustValidation(request.data)
+
+        serializer = AdminRegSerializer(data=request.data)
+        
+        # Check if the serializer is valid and save the user
+        if serializer.is_valid(raise_exception=True):
+            admin = serializer.save()
+            # Generate verification token
+            verification_token = jwt.encode(
+                {
+                    'user_id': str(admin.id), 
+                    'exp': timezone.now() + timedelta(days=1)
+                }, 
+                settings.SECRET_KEY, 
+                algorithm='HS256'
+            )
+
+            # Construct verification link
+            verification_link = f"http://localhost:3000/verify-account/{verification_token}"
+            send_custom_email(
+                'Account Verification', 
+                f'Verify your account: {verification_link}', 
+                settings.EMAIL_HOST_USER, 
+                [admin.email]
+            )
+
+            return Response(
+                {"Success": True, "Message": "Admin created successfully, verification email sent."}, 
+                status=status.HTTP_201_CREATED
+            )
+
+    except serializers.ValidationError as e:
+        return Response(
+            {"Success": False, "Message": "Admin not created", "Errors": e.detail}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except Exception as e:
+        return Response(
+            {"Success": False, "Message": "Admin not created", "Errors": str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+
+@api_view(['POST'])
+def admin_login_view(request):
+    try:
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        # Retrieve user by email
+        user = Admin.objects.filter(email=email).first()
+
+        if user is None:
+            raise AuthenticationFailed("User Not Found")
+
+        if not user.is_active:
+            raise AuthenticationFailed("Account not activated. Please check your email for verification link.")
+        if user.account_status=="Suspended":
+            raise AuthenticationFailed("Account Suspended")
+        if not check_password(password, user.password):
+            raise AuthenticationFailed("Incorrect Password")
+        client_ip=get_client_ip(request)
+        # Update last login time
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login']) 
+
+        # Create JWT tokens
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        # Create response with token and set cookies
+        response = Response()
+        response.set_cookie(key='jwt_access', value=access_token, httponly=True,  samesite='Lax',secure=False)
+        response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True,  samesite='Lax',secure=False)
+
+        # Include role and user_id in the response
+        response.data = {
+            "Message": "Successfully Logged in",
+            "role": user.role,
+            "user_id": str(user.id),
+            "admin_code":user.admin_code,
+            "client_ip":client_ip
+        }
+
+        return response
+
+    except AuthenticationFailed as e:
+        return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
