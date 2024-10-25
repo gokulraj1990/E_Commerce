@@ -1,5 +1,7 @@
 from django.urls import path
-from .views import addProduct, updateProduct, deleteProduct, getProducts, importProducts,deleteMultipleProducts,getProductsByCategory,get_all_products
+from .views import getProducts, importProducts,getProductsByCategory,get_all_products
+from .views import addProduct,updateProduct,deleteProduct,deleteMultipleProducts,importProducts,download_product_list_csv
+
 
 urlpatterns = [
 
@@ -11,5 +13,5 @@ urlpatterns = [
     path('get/all/', get_all_products, name='get_all_products'),
     path('get/category/<str:category>/', getProductsByCategory, name='get_products_by_category'),
     path('import/', importProducts, name='import_products'),
-
+    path('download_list/', download_product_list_csv, name='download_product_list_csv'),
 ]

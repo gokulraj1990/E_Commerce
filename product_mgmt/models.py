@@ -12,7 +12,7 @@ class Product(models.Model):
     ]
 
     productID = models.CharField(max_length=30, primary_key=True, editable=False)
-    product = models.CharField(max_length=30)
+    productname = models.CharField(max_length=30)
     model = models.CharField(max_length=100)
     description = models.CharField(max_length=300)
     price = models.FloatField()
@@ -29,4 +29,4 @@ class Product(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.product} {self.model or ''}".strip()
+        return f"{self.productname} {self.model or ''}".strip()

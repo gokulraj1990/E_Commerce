@@ -3,14 +3,19 @@ import csv
 import io
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view,permission_classes
 from .serializers import ProductSerializer
 from .models import Product
 from django.db.models import Q
+from admin_console.permissions import IsAdmin, IsCustomer
+from django.http import HttpResponse,request
 
 # Create your views here.
 
+
+
 @api_view(['POST'])
+@permission_classes([IsAdmin])
 def addProduct(request):
     try:
         serializer = ProductSerializer(data=request.data)
@@ -19,8 +24,11 @@ def addProduct(request):
             return Response({"Success":True, "Message":"Product added successfully"}, status= status.HTTP_201_CREATED)
     except Exception as e:
         return Response({"Success":False, "Message":"Not added", "Errors":str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
+  
 @api_view(['PATCH'])
+@permission_classes([IsAdmin])  
 def updateProduct(request, product_id):
     try:
         product = Product.objects.get(productID=product_id)
@@ -33,7 +41,9 @@ def updateProduct(request, product_id):
     except Exception as e:
         return Response({"Success": False, "Message": "Not updated", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
 @api_view(['DELETE'])
+@permission_classes([IsAdmin])
 def deleteProduct(request, product_id):
     try:
         product = Product.objects.get(productID=product_id)
@@ -45,6 +55,7 @@ def deleteProduct(request, product_id):
         return Response({"Success": False, "Message": "Not deleted", "Errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['DELETE'])
+@permission_classes([IsAdmin])
 def deleteMultipleProducts(request):
     product_ids = request.data.get('product_ids', [])
     if not product_ids:
@@ -135,8 +146,8 @@ def get_all_products(request):
         print(f"Error: {e}")
         return Response({'Success': False, 'Message': str(e)}, status=500)
 
-
 @api_view(['POST'])
+@permission_classes([IsAdmin])
 def importProducts(request):
     if 'file' not in request.FILES:
         return Response({"Success": False, "Message": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
@@ -153,7 +164,7 @@ def importProducts(request):
     for row in csv.reader(io_string, delimiter=','):
         product_data = {
             'category': row[0],
-            'product': row[1],
+            'productname': row[1],
             'model': row[2],
             'price': row[3],
             'description': row[4],
@@ -165,6 +176,42 @@ def importProducts(request):
             serializer.save()
 
     return Response({"Success": True, "Message": "Products imported successfully"}, status=status.HTTP_201_CREATED)
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAdmin])
+def download_product_list_csv(request):
+    # Create a HttpResponse with CSV content-type
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="product_list.csv"'
+
+    # Create a CSV writer
+    writer = csv.writer(response)
+    headers = ["productid","productname","model","description","price","stock","category","imageUrl"]
+    writer.writerow(headers)
+
+    # Fetch users
+    products = Product.objects.all()
+
+    # Write user data to CSV
+    for product in products:
+        writer.writerow([
+            product.productID,
+            product.productname,
+            product.model,
+            product.description,
+            product.price,
+            product.stock,
+            product.category,
+            product.imageUrl
+
+        ])
+
+    return response
+
+
+
 
 
 
