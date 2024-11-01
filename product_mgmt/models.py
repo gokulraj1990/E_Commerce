@@ -1,6 +1,9 @@
 import uuid
 from django.db import models
 from django.core.exceptions import ValidationError
+from admin_console.models import User
+
+
 
 class Product(models.Model):
     CATEGORY_CHOICES = [
@@ -30,3 +33,19 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.productname} {self.model or ''}".strip()
+
+
+class Review(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.IntegerField()
+    comment = models.TextField(blank=True)
+    rated_by = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        if not (1 <= self.rating <= 5):
+            raise ValidationError('Rating must be between 1 and 5.')
+
+    def __str__(self):
+        return f'Review for {self.product.productname} - Rating: {self.rating}'
+

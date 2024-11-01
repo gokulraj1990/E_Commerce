@@ -1,15 +1,16 @@
 #views.py
 import csv
 import io
+from django.contrib.auth.models import AnonymousUser
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view,permission_classes
-from .serializers import ProductSerializer
-from .models import Product
+from .serializers import ProductSerializer,ReviewSerializer
+from .models import Product,Review
 from django.db.models import Q
 from admin_console.permissions import IsAdmin, IsCustomer
 from django.http import HttpResponse,request
-
+from django.db.models import Avg
 # Create your views here.
 
 
@@ -211,9 +212,95 @@ def download_product_list_csv(request):
     return response
 
 
+@api_view(['POST'])
+@permission_classes([IsCustomer])
+def add_review(request):
+    user = request.jwt_user
+    if isinstance(user, AnonymousUser):
+        return Response({"Success": False, "Message": "User is not authenticated"}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = ReviewSerializer(data=request.data)
+    if serializer.is_valid():
+        review = serializer.save(rated_by=user)
+        return Response({"Success": True, "Message": "Review added", "Review ID": review.id}, status=status.HTTP_201_CREATED)
+    else:
+        return Response({"Success": False, "Message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['GET'])
+def list_all_products_with_reviews(request):
+    try:
+        products = Product.objects.all()
+        products_data = []
+
+        for product in products:
+            reviews = Review.objects.filter(product_id=product.productID)
+            average_rating = reviews.aggregate(Avg('rating'))['rating__avg']
+            serialized_reviews = ReviewSerializer(reviews, many=True).data
+
+            products_data.append({
+                "Product": ProductSerializer(product).data,
+                "Reviews": serialized_reviews,
+                "Average Rating": average_rating
+            })
+
+        return Response({"Success": True, "Products": products_data}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"Success": False, "Message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def list_reviews_for_product(request, product_id):
+    try:
+        reviews = Review.objects.filter(product_id=product_id)
+        average_rating = reviews.aggregate(Avg('rating'))['rating__avg']
+        
+        serialized_reviews = ReviewSerializer(reviews, many=True).data
+
+        return Response({
+            "Success": True,
+            "Reviews": serialized_reviews,
+            "Average Rating": average_rating
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"Success": False, "Message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
 
 
+@api_view(['POST'])
+@permission_classes([IsCustomer])
+def add_review(request):
+    serializer = ReviewSerializer(data=request.data)
+    if serializer.is_valid():
+        review = serializer.save(rated_by=request.jwt_user)  # Associate the review with the user
+        return Response({"Success": True, "Message": "Review added", "Review ID": review.id}, status=status.HTTP_201_CREATED)
+    return Response({"Success": False, "Message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['PUT'])
+@permission_classes([IsCustomer])
+def update_review(request, review_id):
+    try:
+        review = Review.objects.get(id=review_id, rated_by=request.user)
+    except Review.DoesNotExist:
+        return Response({"Success": False, "Message": "Review not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ReviewSerializer(review, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({"Success": True, "Message": "Review updated", "Review ID": review.id}, status=status.HTTP_200_OK)
+    return Response({"Success": False, "Message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+@permission_classes([IsCustomer])
+def delete_review(request, review_id):
+    try:
+        review = Review.objects.get(id=review_id, rated_by=request.user)
+        review.delete()
+        return Response({"Success": True, "Message": "Review deleted"}, status=status.HTTP_204_NO_CONTENT)
+    except Review.DoesNotExist:
+        return Response({"Success": False, "Message": "Review not found"}, status=status.HTTP_404_NOT_FOUND)

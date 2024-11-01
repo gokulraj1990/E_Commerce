@@ -12,10 +12,16 @@ class CartItem(models.Model):
     def __str__(self):
         return f"{self.product.product} (x{self.quantity})"
 
-from django.db import models
-import uuid
 
 class Order(models.Model):
+    ORDER_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('shipped', 'Shipped'),
+        ('in_transit', 'In Transit'),
+        ('delivered', 'Delivered'),
+        ('cancelled', 'Cancelled'),
+    ]
+
     order_id = models.CharField(max_length=20, primary_key=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -27,6 +33,10 @@ class Order(models.Model):
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
     pincode = models.CharField(max_length=6)
+
+    # Tracking details
+    tracking_number = models.CharField(max_length=100, blank=True, null=True)
+    tracking_status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending')
 
     def save(self, *args, **kwargs):
         if not self.order_id:  # Only set the order_id if it hasn't been set yet
@@ -40,7 +50,7 @@ class Order(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Order {self.order_id} by {self.user.firstname}"
+        return f"Order {self.order_id} by {self.user.username}"
 
 
 class OrderItem(models.Model):
