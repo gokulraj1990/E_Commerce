@@ -131,7 +131,7 @@ def forgot_password(request):
         reset_token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
 
         # Send the password reset link
-        reset_link = f"http://localhost:3000/reset-password/{reset_token}"
+        reset_link = f"http://localhost:3000/reset-password/?token={reset_token}"
         send_custom_email(
             'Password Reset',
             f'Click the link to reset your password: {reset_link}',
@@ -204,7 +204,7 @@ def create_user(request):
             )
 
             # Construct verification link
-            verification_link = f"http://localhost:3000/verify-account/{verification_token}"
+            verification_link = f"http://localhost:3000/verify-account/?token={verification_token}"
             send_custom_email(
                 'Account Verification', 
                 f'Verify your account: {verification_link}', 
@@ -256,7 +256,7 @@ def resend_verification(request):
             )
 
             # Construct verification link
-            verification_link = f"http://localhost:3000/verify-account/{verification_token}"
+            verification_link = f"http://localhost:3000/verify-account/?token={verification_token}"
             send_custom_email(
                 'Account Verification', 
                 f'Verify your account: {verification_link}', 
@@ -307,7 +307,7 @@ def reactivate_verification(request):
             )
 
             # Construct verification link
-            verification_link = f"http://localhost:3000/activate-account/{verification_token}"
+            verification_link = f"http://localhost:3000/activate-account/?token={verification_token}"
             send_custom_email(
                 'Account Reactivation', 
                 f'Activate your account: {verification_link}', 
@@ -542,7 +542,7 @@ def create_admin(request):
             )
 
             # Construct verification link
-            verification_link = f"http://localhost:3000/verify-account/{verification_token}"
+            verification_link = f"http://localhost:3000/verify-account/?token={verification_token}"
             send_custom_email(
                 'Account Verification', 
                 f'Verify your account: {verification_link}', 
