@@ -185,12 +185,11 @@ def reset_password(request):
 def create_user(request):
     try:
         # Validate request data (implement your validation logic)
-        valid = CustValidation(request.data)
 
+        valid = CustValidation(request.data)
         # Set user role
         request.data['role'] = User.CUSTOMER  
         serializer = UserRegSerializer(data=request.data)
-        
         # Check if the serializer is valid and save the user
         if serializer.is_valid(raise_exception=True):
             user = serializer.save()
@@ -596,6 +595,7 @@ def admin_login_view(request):
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
+
 
         # Create response with token and set cookies
         response = Response()
