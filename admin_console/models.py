@@ -64,66 +64,6 @@ class User(models.Model):
                 return {}
 
         return dirty_fields
-    
-    
-    
-    # def save(self, *args, **kwargs):
-    #     # Check if the password field has changed
-    #     if 'password' in self.get_dirty_fields():
-    #         # Hash password before saving if it's plain-text (not already hashed)
-    #         if self.password and not self.password.startswith('pbkdf2_sha256$'):
-    #             print("Hashing password...")  # Debugging output
-    #             self.password = make_password(self.password)
-    #             print("Password after hashing:", self.password)  # Debugging output
-        
-    #     super().save(*args, **kwargs)
-
-    # def get_dirty_fields(self):
-    #     """
-    #     Helper method to check which fields have changed.
-    #     """
-    #     dirty_fields = {}
-
-    #     if self.pk:  # Only check for dirty fields if this is an existing instance
-    #         try:
-    #             # Fetch the original instance from the database
-    #             original = User.objects.get(pk=self.pk)
-                
-    #             for field in self._meta.fields:
-    #                 current_value = getattr(self, field.name)
-    #                 original_value = getattr(original, field.name)
-                    
-    #                 # Check if the field values differ
-    #                 if current_value != original_value:
-    #                     print(f"Field '{field.name}' changed: {original_value} -> {current_value}")  # Debugging output
-    #                     dirty_fields[field.name] = current_value
-
-    #         except User.DoesNotExist:
-    #             # Handle the case where the object doesn't exist (e.g., new object)
-    #             return {}
-
-    #     return dirty_fields
-
-
-    # def save(self, *args, **kwargs):
-    #     # Check if we need to hash the password
-    #     if self.pk is None or (self.pk is not None and 'password' in self.get_dirty_fields()):
-    #         self.password = make_password(self.password)
-    #     super().save(*args, **kwargs)
-
-    # def get_dirty_fields(self):
-    #     """Helper method to check which fields have changed."""
-    #     dirty_fields = {}
-    #     if self.pk:  # Only check for dirty fields if this is an existing instance
-    #         try:
-    #             original = User.objects.get(pk=self.pk)
-    #             for field in self._meta.fields:
-    #                 if getattr(self, field.name) != getattr(original, field.name):
-    #                     dirty_fields[field.name] = getattr(self, field.name)
-    #         except User.DoesNotExist:
-    #             return {}
-    #     return dirty_fields
-
 
     def view_user_details(self):
         return {
