@@ -84,7 +84,7 @@ def getProducts(request):
         filters = Q()
 
         if query:
-            filters &= (Q(product__icontains=query) |
+            filters &= (Q(productname__icontains=query) |
                         Q(model__icontains=query) |
                         Q(description__icontains=query))
 
