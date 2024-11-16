@@ -1,10 +1,18 @@
 from rest_framework import serializers
 from .models import CartItem, Order, OrderItem
+from product_mgmt.models import Product
+
 
 class CartItemSerializer(serializers.ModelSerializer):
+    productname = serializers.CharField(source='product.productname')
+    price = serializers.FloatField(source='product.price')
+    model = serializers.CharField(source='product.model')
+    description = serializers.CharField(source='product.description', required=False)
+    imageUrl = serializers.CharField(source='product.imageUrl', required=False)
+
     class Meta:
         model = CartItem
-        fields = ['id', 'user', 'product', 'quantity']
+        fields = ['id', 'productname', 'price', 'model', 'description', 'imageUrl', 'quantity']
 
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
