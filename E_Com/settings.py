@@ -183,14 +183,19 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Allow cross-origin cookies for the session
+SESSION_COOKIE_SAMESITE = "None"  # Set SameSite attribute to None
+SESSION_COOKIE_SECURE = True      # Required for SameSite=None, ensures cookies are sent over HTTPS
+
+CORS_ALLOW_CREDENTIALS = True  # Allow credentials
+CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (not recommended for production)
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
    "http://192.168.29.98:3000",  # React app IP
    "http://www.techkt.in"
    
 ]
-
-CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (not recommended for production)
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),

@@ -73,7 +73,8 @@ def view_cart(request):
         return Response({"Success": False, "Message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET'])
+
+@api_view(['POST'])
 def order_history(request):
     user = request.jwt_user
     if isinstance(user, AnonymousUser):

@@ -414,8 +414,8 @@ def login_view(request):
 
         # Create response with token and set cookies
         response = Response()
-        response.set_cookie(key='jwt_access', value=access_token, httponly=True,  samesite='Lax',secure=False)
-        response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True,  samesite='Lax',secure=False)
+        response.set_cookie(key='jwt_access', value=access_token, httponly=True,  samesite='None',secure=True)
+        response.set_cookie(key='jwt_refresh', value=refresh_token, httponly=True,  samesite='None',secure=True)
 
         # Include role and user_id in the response
         response.data = {
@@ -459,9 +459,9 @@ def otp_login_view(request):
     
     plus_phone_number="+91"+phone_number
 
-    # print(plus_phone_number,otp)
 
-    # Send OTP using Twilio
+
+    #Send OTP using Twilio
     client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
     client.messages.create(
         body=f"Your OTP is {otp}",
