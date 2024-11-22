@@ -58,9 +58,9 @@ def deactivate_account(request):
     try:
         profile = User.objects.get(id=request.jwt_user.id)
         print(profile)
-        profile.status="Deactivated"
+        profile.account_status="Deactivated"
         profile.save()
-        return Response({'success': 'Profile deactivated successfully'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'success': 'Profile deactivated successfully'}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
