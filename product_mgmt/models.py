@@ -39,8 +39,13 @@ class Review(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
     rating = models.IntegerField()
     comment = models.TextField(blank=True)
-    rated_by = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
+    rated_by = models.ForeignKey(User, on_delete=models.CASCADE, null=False, default=1)  # Set default user
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['rated_by', 'product'], name='unique_review_per_product')
+        ]
 
     def clean(self):
         if not (1 <= self.rating <= 5):
@@ -48,4 +53,24 @@ class Review(models.Model):
 
     def __str__(self):
         return f'Review for {self.product.productname} - Rating: {self.rating}'
+
+
+
+
+
+
+
+# class Review(models.Model):
+#     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+#     rating = models.IntegerField()
+#     comment = models.TextField(blank=True)
+#     rated_by = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def clean(self):
+#         if not (1 <= self.rating <= 5):
+#             raise ValidationError('Rating must be between 1 and 5.')
+
+#     def __str__(self):
+#         return f'Review for {self.product.productname} - Rating: {self.rating}'
 

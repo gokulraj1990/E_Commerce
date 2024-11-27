@@ -10,7 +10,7 @@ class CartItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
 
     def __str__(self):
-        return f"{self.product.product} (x{self.quantity})"
+        return f"{self.product.productname} (x{self.quantity})"
 
 
 class Order(models.Model):
@@ -50,7 +50,7 @@ class Order(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Order {self.order_id} by {self.user.username}"
+        return f"Order {self.order_id} by {self.user.firstname}"
 
 
 class OrderItem(models.Model):

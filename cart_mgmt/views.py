@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .models import CartItem, Product, Order, OrderItem, WishlistItem
+from django.core.exceptions import ObjectDoesNotExist
 from user_mgmt.models import CustomerProfile
 from django.shortcuts import get_object_or_404
 from .serializers import CartItemSerializer, OrderItemSerializer, OrderSerializer, WishListSerializer
@@ -97,16 +98,64 @@ def order_history(request):
 @api_view(['POST'])
 def checkout(request):
     user = request.jwt_user
+
+    # Check if the user is authenticated
     if isinstance(user, AnonymousUser):
         return Response({"Success": False, "Message": "User is not authenticated"}, status=status.HTTP_403_FORBIDDEN)
 
+    # Retrieve cart items for the user
     cart_items = CartItem.objects.filter(user=user)
     if not cart_items.exists():
         return Response({"Success": False, "Message": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
 
-    customer_profile = CustomerProfile.objects.get(user=user)
+    # Attempt to retrieve the customer profile
+    try:
+        customer_profile = CustomerProfile.objects.get(user=user)
+    except ObjectDoesNotExist:
+        # If customer profile doesn't exist, create a new profile with address data
+        address = request.data.get('address')
+        city = request.data.get('city')
+        state = request.data.get('state')
+        pincode = request.data.get('pincode')
+
+        if not all([address, city, state, pincode]):
+            return Response({
+                "Success": False,
+                "Message": "Please provide address, city, state, and pincode"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create a new customer profile
+        customer_profile = CustomerProfile.objects.create(
+            user=user,
+            address=address,
+            city=city,
+            state=state,
+            pincode=pincode
+        )
+    else:
+        # If the customer profile exists, check if the address has been updated
+        new_address = request.data.get('address')
+        new_city = request.data.get('city')
+        new_state = request.data.get('state')
+        new_pincode = request.data.get('pincode')
+
+        # If any address field is provided and differs from the existing values, update the profile
+        if new_address and new_address != customer_profile.address:
+            customer_profile.address = new_address
+        if new_city and new_city != customer_profile.city:
+            customer_profile.city = new_city
+        if new_state and new_state != customer_profile.state:
+            customer_profile.state = new_state
+        if new_pincode and new_pincode != customer_profile.pincode:
+            customer_profile.pincode = new_pincode
+        
+        # Save the updated profile
+        customer_profile.save()
+
+    # Calculate the total amount from the cart items
     total_amount = sum(item.product.price * item.quantity for item in cart_items)
 
+    # Create an order
     order = Order.objects.create(
         user=user,
         total_amount=total_amount,
@@ -115,14 +164,18 @@ def checkout(request):
         state=customer_profile.state,
         pincode=customer_profile.pincode
     )
+    
+    # Delete the cart items after order creation
+    cart_items.delete()
 
-    # Prepare for payment, but do not process it yet
+    # Return the response with order details
     return Response({
         "Success": True,
         "Message": "Order created, proceed to payment",
         "Order ID": order.order_id,
         "Total Amount": total_amount
     }, status=status.HTTP_201_CREATED)
+
 
 
 @api_view(['POST'])
@@ -170,7 +223,7 @@ def payment(request, order_id):
 def finalize_order(cart_items, order, user):
     for item in cart_items:
         if item.product.stock < item.quantity:
-            raise ValueError(f"Insufficient stock for {item.product.name}. Only {item.product.stock} available.")
+            raise ValueError(f"Insufficient stock for {item.product.productname}. Only {item.product.stock} available.")
 
         # Reduce the stock of the product
         item.product.stock -= item.quantity
