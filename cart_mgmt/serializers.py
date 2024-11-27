@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CartItem, Order, OrderItem
+from .models import CartItem, Order, OrderItem, WishlistItem
 from product_mgmt.models import Product
 
 
@@ -32,3 +32,14 @@ class OrderSerializer(serializers.ModelSerializer):
         for item_data in items_data:
             OrderItem.objects.create(order=order, **item_data)
         return order
+
+class WishListSerializer(serializers.ModelSerializer):
+    productname = serializers.CharField(source='product.productname')
+    price = serializers.FloatField(source='product.price')
+    model = serializers.CharField(source='product.model')
+    description = serializers.CharField(source='product.description', required=False)
+    imageUrl = serializers.CharField(source='product.imageUrl', required=False)
+
+    class Meta:
+        model = WishlistItem
+        fields = ['id', 'productname', 'price', 'model', 'description', 'imageUrl']
