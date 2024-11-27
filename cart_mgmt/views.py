@@ -1,10 +1,10 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from .models import CartItem, Product, Order, OrderItem
+from .models import CartItem, Product, Order, OrderItem, WishlistItem
 from user_mgmt.models import CustomerProfile
 from django.shortcuts import get_object_or_404
-from .serializers import CartItemSerializer, OrderItemSerializer, OrderSerializer
+from .serializers import CartItemSerializer, OrderItemSerializer, OrderSerializer, WishListSerializer
 from admin_console.utils import send_custom_email
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
@@ -182,7 +182,69 @@ def finalize_order(cart_items, order, user):
     # Clear the user's cart
     cart_items.delete()
 
+@api_view(['POST'])
+def add_to_wishlist(request):
+    user = request.jwt_user
+    if isinstance(user, AnonymousUser):
+        return Response({"Success": False, "Message": "User is not authenticated"}, status=status.HTTP_403_FORBIDDEN)
 
+    try:
+        product_id = request.data.get('product_id')
+
+        # Fetch the product
+        product = get_object_or_404(Product, productID=product_id)
+
+        # Add product to wishlist
+        wishlist_item, created = WishlistItem.objects.get_or_create(user=user, product=product)
+        if created:
+            return Response({"Success": True, "Message": "Item added to wishlist"}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"Success": True, "Message": "Item already in wishlist"}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"Success": False, "Message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+def remove_from_wishlist(request, product_id):
+    user = request.jwt_user
+    if isinstance(user, AnonymousUser):
+        return Response({"Success": False, "Message": "User is not authenticated"}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        
+        # product_id_data = request.data.get('product_id')
+
+        # # Get the wishlist item
+        # print(user,product_id_data)
+        wishlist_item = get_object_or_404(WishlistItem, product_id=product_id, user=user)
+
+        # Delete the item from the wishlist
+        wishlist_item.delete()
+
+        return Response({"Success": True, "Message": "Item removed from wishlist"}, status=status.HTTP_200_OK)
+
+    except WishlistItem.DoesNotExist:
+        return Response({"Success": False, "Message": "Item not found in wishlist"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"Success": False, "Message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def view_wishlist(request):
+    user = request.jwt_user
+    if isinstance(user, AnonymousUser):
+        return Response({"Success": False, "Message": "User is not authenticated"}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        # Fetch wishlist items for the authenticated user
+        wishlist_items = WishlistItem.objects.filter(user=user)
+
+        # Serialize the wishlist items
+        serializer = WishListSerializer(wishlist_items, many=True)
+
+        return Response({"Success": True, "Wishlist Items": serializer.data}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"Success": False, "Message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 #@api_view(['POST'])
 # def checkout(request):
