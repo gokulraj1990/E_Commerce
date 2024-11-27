@@ -14,7 +14,6 @@ from django.db.models import Avg
 # Create your views here.
 
 
-
 @api_view(['POST'])
 @permission_classes([IsAdmin])
 def addProduct(request):
@@ -275,32 +274,72 @@ def list_reviews_for_product(request, product_id):
 @api_view(['POST'])
 @permission_classes([IsCustomer])
 def add_review(request):
-    serializer = ReviewSerializer(data=request.data)
-    if serializer.is_valid():
-        review = serializer.save(rated_by=request.jwt_user)  # Associate the review with the user
-        return Response({"Success": True, "Message": "Review added", "Review ID": review.id}, status=status.HTTP_201_CREATED)
-    return Response({"Success": False, "Message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        # Ensure the data is valid via serializer
+        serializer = ReviewSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            # Create the review and associate it with the authenticated user
+            review = serializer.save(rated_by=request.jwt_user)  # Assuming `jwt_user` gives you the authenticated user
+            return Response({"Success": True, "Message": "Review added", "Review ID": review.id}, status=status.HTTP_201_CREATED)
+        
+        # If serializer is not valid, return errors
+        return Response({"Success": False, "Message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        # Catch any unexpected exceptions
+        return Response({"Success": False, "Message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 @api_view(['PUT'])
 @permission_classes([IsCustomer])
 def update_review(request, review_id):
     try:
+        # Get the review by ID and check if it's owned by the current user
         review = Review.objects.get(id=review_id, rated_by=request.user)
+        
     except Review.DoesNotExist:
-        return Response({"Success": False, "Message": "Review not found"}, status=status.HTTP_404_NOT_FOUND)
+        # Review doesn't exist or doesn't belong to the current user
+        return Response({"Success": False, "Message": "Review not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND)
+    
+    try:
+        # If the review exists, validate and update
+        serializer = ReviewSerializer(review, data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"Success": True, "Message": "Review updated", "Review ID": review.id}, status=status.HTTP_200_OK)
+        
+        # If validation fails, return the error messages
+        return Response({"Success": False, "Message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-    serializer = ReviewSerializer(review, data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({"Success": True, "Message": "Review updated", "Review ID": review.id}, status=status.HTTP_200_OK)
-    return Response({"Success": False, "Message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        # Catch unexpected errors
+        return Response({"Success": False, "Message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 @api_view(['DELETE'])
 @permission_classes([IsCustomer])
 def delete_review(request, review_id):
+    user = request.jwt_user
+    if isinstance(user, AnonymousUser):
+        return Response({"Success": False, "Message": "User is not authenticated"}, status=status.HTTP_403_FORBIDDEN)
     try:
-        review = Review.objects.get(id=review_id, rated_by=request.user)
+        # Get the review by ID and check if it's owned by the current user
+        review = Review.objects.get(id=review_id, rated_by=user)
+        
+        # Delete the review
         review.delete()
         return Response({"Success": True, "Message": "Review deleted"}, status=status.HTTP_204_NO_CONTENT)
+    
     except Review.DoesNotExist:
-        return Response({"Success": False, "Message": "Review not found"}, status=status.HTTP_404_NOT_FOUND)
+        # Review doesn't exist or doesn't belong to the current user
+        return Response({"Success": False, "Message": "Review not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND)
+    
+    except Exception as e:
+        # Catch unexpected errors
+        return Response({"Success": False, "Message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
